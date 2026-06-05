@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import axios from 'axios';
-import { getSocket } from '../App';
+import { collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, deleteDoc, doc, getDocs, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { auth, db } from '../App';
 import { FiNavigation, FiSearch, FiMapPin, FiStar, FiClock, FiBell, FiUsers, FiShare2, FiPlus, FiTrash2, FiChevronLeft, FiChevronRight, FiRefreshCw, FiAlertCircle } from 'react-icons/fi';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000';
@@ -63,18 +63,9 @@ export default function MapsComponent({ fullScreen = false }) {
     fetchLocationHistory();
     startTracking();
 
-    const socket = getSocket();
-    if (socket) {
-      socket.on('location:update', handleLocationUpdate);
-    }
-
     return () => {
       if (watchIdRef.current) {
         navigator.geolocation.clearWatch(watchIdRef.current);
-      }
-      const s = getSocket();
-      if (s) {
-        s.off('location:update', handleLocationUpdate);
       }
     };
   }, []);
@@ -241,28 +232,15 @@ export default function MapsComponent({ fullScreen = false }) {
     try {
       let placeName = '';
       try {
-        const res = await axios.get(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
-        placeName = res.data.display_name?.substring(0, 200) || '';
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`).then(r => r.json());
+        placeName = res.display_name?.substring(0, 200) || '';
       } catch {}
 
-      await axios.post(`${API_URL}/api/maps/location`, {
-        latitude: lat,
-        longitude: lng,
-        placeName,
-        accuracy: 0,
-        altitude: 0,
-        speed: 0
+      await fetch(`${API_URL}/api/maps/location`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ latitude: lat, longitude: lng, placeName, accuracy: 0, altitude: 0, speed: 0 })
       });
-
-      const socket = getSocket();
-      if (socket) {
-        socket.emit('location:update', {
-          latitude: lat,
-          longitude: lng,
-          placeName,
-          username: currentUser.username
-        });
-      }
     } catch (err) {
       console.error('Failed to update location:', err);
     }
@@ -284,8 +262,8 @@ export default function MapsComponent({ fullScreen = false }) {
 
   const fetchNearbyUsers = async (lat, lng) => {
     try {
-      const res = await axios.get(`${API_URL}/api/maps/nearby?lat=${lat}&lng=${lng}&radius=50`);
-      setNearbyUsers(res.data);
+      const res = await fetch(`${API_URL}/api/maps/nearby?lat=${lat}&lng=${lng}&radius=50`).then(r => r.json());
+      setNearbyUsers(res);
     } catch (err) {
       console.error('Failed to fetch nearby users:', err);
     }
@@ -293,8 +271,8 @@ export default function MapsComponent({ fullScreen = false }) {
 
   const fetchSavedPlaces = async () => {
     try {
-      const res = await axios.get(`${API_URL}/api/maps/places`);
-      setSavedPlaces(res.data);
+      const res = await fetch(`${API_URL}/api/maps/places`).then(r => r.json());
+      setSavedPlaces(res);
     } catch (err) {
       console.error('Failed to fetch saved places:', err);
     }
@@ -302,8 +280,8 @@ export default function MapsComponent({ fullScreen = false }) {
 
   const fetchGeofences = async () => {
     try {
-      const res = await axios.get(`${API_URL}/api/maps/geofences`);
-      setGeofences(res.data);
+      const res = await fetch(`${API_URL}/api/maps/geofences`).then(r => r.json());
+      setGeofences(res);
     } catch (err) {
       console.error('Failed to fetch geofences:', err);
     }
@@ -311,8 +289,8 @@ export default function MapsComponent({ fullScreen = false }) {
 
   const fetchLocationHistory = async () => {
     try {
-      const res = await axios.get(`${API_URL}/api/maps/history?limit=50`);
-      setLocationHistory(res.data);
+      const res = await fetch(`${API_URL}/api/maps/history?limit=50`).then(r => r.json());
+      setLocationHistory(res);
     } catch (err) {
       console.error('Failed to fetch location history:', err);
     }
@@ -321,15 +299,12 @@ export default function MapsComponent({ fullScreen = false }) {
   const savePlace = async () => {
     if (!savePlaceName || !selectedPlace) return;
     try {
-      const res = await axios.post(`${API_URL}/api/maps/places`, {
-        placeName: savePlaceName,
-        address: '',
-        latitude: selectedPlace.lat,
-        longitude: selectedPlace.lng,
-        category: savePlaceCategory,
-        notes: savePlaceNotes
-      });
-      setSavedPlaces(prev => [...prev, res.data]);
+      const res = await fetch(`${API_URL}/api/maps/places`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ placeName: savePlaceName, address: '', latitude: selectedPlace.lat, longitude: selectedPlace.lng, category: savePlaceCategory, notes: savePlaceNotes })
+      }).then(r => r.json());
+      setSavedPlaces(prev => [...prev, res]);
       setShowSavePlace(false);
       setSavePlaceName('');
       setSavePlaceNotes('');
@@ -340,7 +315,7 @@ export default function MapsComponent({ fullScreen = false }) {
 
   const deletePlace = async (placeId) => {
     try {
-      await axios.delete(`${API_URL}/api/maps/places/${placeId}`);
+      await fetch(`${API_URL}/api/maps/places/${placeId}`, { method: 'DELETE' });
       setSavedPlaces(prev => prev.filter(p => p.id !== placeId));
     } catch (err) {
       console.error('Failed to delete place:', err);
@@ -350,15 +325,12 @@ export default function MapsComponent({ fullScreen = false }) {
   const createGeofence = async () => {
     if (!geofenceName || !myLocation) return;
     try {
-      const res = await axios.post(`${API_URL}/api/maps/geofences`, {
-        name: geofenceName,
-        latitude: myLocation.latitude,
-        longitude: myLocation.longitude,
-        radiusMeters: geofenceRadius,
-        triggerOnEnter: true,
-        triggerOnExit: true
-      });
-      setGeofences(prev => [...prev, res.data]);
+      const res = await fetch(`${API_URL}/api/maps/geofences`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: geofenceName, latitude: myLocation.latitude, longitude: myLocation.longitude, radiusMeters: geofenceRadius, triggerOnEnter: true, triggerOnExit: true })
+      }).then(r => r.json());
+      setGeofences(prev => [...prev, res]);
       setShowGeofenceModal(false);
       setGeofenceName('');
     } catch (err) {
@@ -368,7 +340,7 @@ export default function MapsComponent({ fullScreen = false }) {
 
   const deleteGeofence = async (fenceId) => {
     try {
-      await axios.delete(`${API_URL}/api/maps/geofences/${fenceId}`);
+      await fetch(`${API_URL}/api/maps/geofences/${fenceId}`, { method: 'DELETE' });
       setGeofences(prev => prev.filter(f => f.id !== fenceId));
     } catch (err) {
       console.error('Failed to delete geofence:', err);
@@ -377,7 +349,11 @@ export default function MapsComponent({ fullScreen = false }) {
 
   const toggleSharing = async () => {
     try {
-      await axios.put(`${API_URL}/api/maps/sharing`, { isSharing: !isSharing });
+      await fetch(`${API_URL}/api/maps/sharing`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isSharing: !isSharing })
+      });
       setIsSharing(!isSharing);
     } catch (err) {
       console.error('Failed to toggle sharing:', err);
@@ -387,8 +363,8 @@ export default function MapsComponent({ fullScreen = false }) {
   const searchPlaces = async (query) => {
     if (!query.trim()) { setSearchResults([]); return; }
     try {
-      const res = await axios.get(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`);
-      setSearchResults(res.data);
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`).then(r => r.json());
+      setSearchResults(res);
     } catch (err) {
       console.error('Search failed:', err);
     }

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import axios from 'axios';
-import { getSocket } from '../App';
+import { collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, deleteDoc, doc, getDocs, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { auth, db } from '../App';
 import { FiMic, FiMicOff, FiVideo, FiVideoOff, FiPhone, FiPhoneOff, FiMonitor, FiCamera, FiThumbsUp, FiMessageSquare, FiUsers, FiSettings, FiStar, FiMaximize2, FiMinimize2 } from 'react-icons/fi';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000';
@@ -57,33 +57,7 @@ export default function VideoCallComponent({ fullScreen = false }) {
 
   useEffect(() => {
     fetchContacts();
-    const socket = getSocket();
-    if (socket) {
-      socket.on('video:incoming-call', handleIncomingCall);
-      socket.on('video:call-accepted', handleCallAccepted);
-      socket.on('video:call-rejected', handleCallRejected);
-      socket.on('video:call-ended', handleCallEnded);
-      socket.on('video:signal', handleSignal);
-      socket.on('video:user-joined', handleUserJoined);
-      socket.on('video:user-left', handleUserLeft);
-      socket.on('video:raise-hand', handleRaiseHand);
-      socket.on('video:recording-status', handleRecordingStatus);
-    }
-    return () => {
-      const s = getSocket();
-      if (s) {
-        s.off('video:incoming-call', handleIncomingCall);
-        s.off('video:call-accepted', handleCallAccepted);
-        s.off('video:call-rejected', handleCallRejected);
-        s.off('video:call-ended', handleCallEnded);
-        s.off('video:signal', handleSignal);
-        s.off('video:user-joined', handleUserJoined);
-        s.off('video:user-left', handleUserLeft);
-        s.off('video:raise-hand', handleRaiseHand);
-        s.off('video:recording-status', handleRecordingStatus);
-      }
-      cleanupCall();
-    };
+    cleanupCall();
   }, []);
 
   useEffect(() => {
@@ -102,8 +76,8 @@ export default function VideoCallComponent({ fullScreen = false }) {
 
   const fetchContacts = async () => {
     try {
-      const res = await axios.get(`${API_URL}/api/video/contacts`);
-      setContacts(res.data);
+      const res = await fetch(`${API_URL}/api/video/contacts`).then(r => r.json());
+      setContacts(res);
     } catch (err) {
       console.error('Failed to fetch contacts:', err);
     }
@@ -116,10 +90,6 @@ export default function VideoCallComponent({ fullScreen = false }) {
   const handleCallAccepted = async (data) => {
     setInCall(true);
     await startLocalStream();
-    const socket = getSocket();
-    if (socket) {
-      socket.emit('video:join', { roomId: data.roomId, username: currentUser.username });
-    }
     setRoomId(data.roomId);
     setIncomingCall(null);
   };
@@ -141,10 +111,6 @@ export default function VideoCallComponent({ fullScreen = false }) {
       await peer.setRemoteDescription(new RTCSessionDescription(data.signal));
       const answer = await peer.createAnswer();
       await peer.setLocalDescription(answer);
-      const socket = getSocket();
-      if (socket) {
-        socket.emit('video:signal', { roomId, signal: answer, type: 'answer', targetUserId: data.userId });
-      }
     } else if (data.type === 'answer') {
       const peer = peers[data.userId];
       if (peer) {
@@ -223,17 +189,7 @@ export default function VideoCallComponent({ fullScreen = false }) {
     }
 
     peer.onicecandidate = (event) => {
-      if (event.candidate) {
-        const socket = getSocket();
-        if (socket) {
-          socket.emit('video:signal', {
-            roomId,
-            signal: event.candidate,
-            type: 'ice-candidate',
-            targetUserId: userId
-          });
-        }
-      }
+      // ICE candidate handling removed - signaling server not available
     };
 
     peer.ontrack = (event) => {
@@ -254,15 +210,6 @@ export default function VideoCallComponent({ fullScreen = false }) {
     if (initiator) {
       peer.createOffer().then(offer => {
         peer.setLocalDescription(offer);
-        const socket = getSocket();
-        if (socket) {
-          socket.emit('video:signal', {
-            roomId,
-            signal: offer,
-            type: 'offer',
-            targetUserId: userId
-          });
-        }
       });
     }
 
@@ -274,17 +221,13 @@ export default function VideoCallComponent({ fullScreen = false }) {
     if (!stream) return;
 
     try {
-      const res = await axios.post(`${API_URL}/api/video/call/start`, {
-        calleeId,
-        isGroup: isGroupCall,
-        participantIds: isGroupCall ? selectedContacts : []
-      });
-      setRoomId(res.data.roomId);
+      const res = await fetch(`${API_URL}/api/video/call/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ calleeId, isGroup: isGroupCall, participantIds: isGroupCall ? selectedContacts : [] })
+      }).then(r => r.json());
+      setRoomId(res.roomId);
       setInCall(true);
-      const socket = getSocket();
-      if (socket) {
-        socket.emit('video:join', { roomId: res.data.roomId, username: currentUser.username });
-      }
     } catch (err) {
       console.error('Failed to start call:', err);
     }
@@ -296,13 +239,13 @@ export default function VideoCallComponent({ fullScreen = false }) {
     if (!stream) return;
 
     try {
-      await axios.post(`${API_URL}/api/video/call/accept`, { roomId: incomingCall.roomId });
+      await fetch(`${API_URL}/api/video/call/accept`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roomId: incomingCall.roomId })
+      });
       setRoomId(incomingCall.roomId);
       setInCall(true);
-      const socket = getSocket();
-      if (socket) {
-        socket.emit('video:join', { roomId: incomingCall.roomId, username: currentUser.username });
-      }
       setIncomingCall(null);
     } catch (err) {
       console.error('Failed to accept call:', err);
@@ -312,7 +255,11 @@ export default function VideoCallComponent({ fullScreen = false }) {
   const rejectCall = async () => {
     if (!incomingCall) return;
     try {
-      await axios.post(`${API_URL}/api/video/call/reject`, { roomId: incomingCall.roomId });
+      await fetch(`${API_URL}/api/video/call/reject`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roomId: incomingCall.roomId })
+      });
     } catch (err) {
       console.error('Failed to reject call:', err);
     }
@@ -322,7 +269,11 @@ export default function VideoCallComponent({ fullScreen = false }) {
   const endCall = async () => {
     if (roomId) {
       try {
-        await axios.post(`${API_URL}/api/video/call/end`, { roomId });
+        await fetch(`${API_URL}/api/video/call/end`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ roomId })
+        });
       } catch (err) {
         console.error('Failed to end call:', err);
       }
@@ -351,10 +302,6 @@ export default function VideoCallComponent({ fullScreen = false }) {
     if (durationIntervalRef.current) {
       clearInterval(durationIntervalRef.current);
       durationIntervalRef.current = null;
-    }
-    const socket = getSocket();
-    if (socket) {
-      socket.emit('video:leave', { roomId });
     }
   };
 
@@ -425,10 +372,6 @@ export default function VideoCallComponent({ fullScreen = false }) {
   };
 
   const raiseHand = () => {
-    const socket = getSocket();
-    if (socket && roomId) {
-      socket.emit('video:raise-hand', { roomId, username: currentUser.username });
-    }
   };
 
   const sendChatMessage = () => {
@@ -442,10 +385,6 @@ export default function VideoCallComponent({ fullScreen = false }) {
     };
     setCallMessages(prev => [...prev, msg]);
     setChatMessage('');
-    const socket = getSocket();
-    if (socket && roomId) {
-      socket.emit('chat:message', { roomId: `call_${roomId}`, message: chatMessage, username: currentUser.username });
-    }
   };
 
   const toggleFullScreen = () => {

@@ -1,4 +1,5 @@
 const APP_CONFIG = {
-  API_URL: 'http://localhost:3000',
-  SOCKET_URL: 'http://localhost:3000',
+  API_URL: '',
+  SOCKET_URL: '',
 };
+

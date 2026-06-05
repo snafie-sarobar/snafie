@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
+import { collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, deleteDoc, doc, getDocs, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { auth, db, storage } from '../App';
 import { FiPlay, FiPause, FiSkipForward, FiSkipBack, FiHeart, FiList, FiUpload, FiSearch, FiShuffle, FiRepeat, FiVolume2, FiPlus, FiTrash2, FiMusic, FiChevronDown, FiChevronUp } from 'react-icons/fi';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000';
@@ -56,8 +58,8 @@ export default function MusicPlayerComponent({ fullScreen = false }) {
 
   const fetchSongs = async () => {
     try {
-      const res = await axios.get(`${API_URL}/api/music/library`);
-      setSongs(res.data.songs || []);
+      const res = await fetch(`${API_URL}/api/music/library`).then(r => r.json());
+      setSongs(res.songs || []);
     } catch (err) {
       console.error('Failed to fetch songs:', err);
     }
@@ -65,8 +67,8 @@ export default function MusicPlayerComponent({ fullScreen = false }) {
 
   const fetchPlaylists = async () => {
     try {
-      const res = await axios.get(`${API_URL}/api/music/playlists`);
-      setPlaylists(res.data);
+      const res = await fetch(`${API_URL}/api/music/playlists`).then(r => r.json());
+      setPlaylists(res);
     } catch (err) {
       console.error('Failed to fetch playlists:', err);
     }
@@ -74,9 +76,9 @@ export default function MusicPlayerComponent({ fullScreen = false }) {
 
   const fetchPlaylistSongs = async (playlistId) => {
     try {
-      const res = await axios.get(`${API_URL}/api/music/playlists/${playlistId}`);
-      setPlaylistSongs(res.data.songs || []);
-      setActivePlaylist(res.data);
+      const res = await fetch(`${API_URL}/api/music/playlists/${playlistId}`).then(r => r.json());
+      setPlaylistSongs(res.songs || []);
+      setActivePlaylist(res);
     } catch (err) {
       console.error('Failed to fetch playlist songs:', err);
     }
@@ -84,8 +86,8 @@ export default function MusicPlayerComponent({ fullScreen = false }) {
 
   const fetchRecentlyPlayed = async () => {
     try {
-      const res = await axios.get(`${API_URL}/api/music/recently-played`);
-      setRecentlyPlayed(res.data);
+      const res = await fetch(`${API_URL}/api/music/recently-played`).then(r => r.json());
+      setRecentlyPlayed(res);
     } catch (err) {
       console.error('Failed to fetch recently played:', err);
     }
@@ -93,8 +95,8 @@ export default function MusicPlayerComponent({ fullScreen = false }) {
 
   const fetchGenres = async () => {
     try {
-      const res = await axios.get(`${API_URL}/api/music/genres`);
-      setGenres(res.data);
+      const res = await fetch(`${API_URL}/api/music/genres`).then(r => r.json());
+      setGenres(res);
     } catch (err) {
       console.error('Failed to fetch genres:', err);
     }
@@ -102,8 +104,8 @@ export default function MusicPlayerComponent({ fullScreen = false }) {
 
   const searchSongs = async (query) => {
     try {
-      const res = await axios.get(`${API_URL}/api/music/search?q=${encodeURIComponent(query)}`);
-      setSearchResults(res.data.songs || []);
+      const res = await fetch(`${API_URL}/api/music/search?q=${encodeURIComponent(query)}`).then(r => r.json());
+      setSearchResults(res.songs || []);
     } catch (err) {
       console.error('Search failed:', err);
     }
@@ -121,8 +123,8 @@ export default function MusicPlayerComponent({ fullScreen = false }) {
       audioRef.current.play().catch(console.error);
     }
     try {
-      await axios.post(`${API_URL}/api/music/song/${song.id}`);
-      await axios.post(`${API_URL}/api/music/play-count/${song.id}`);
+      await fetch(`${API_URL}/api/music/song/${song.id}`, { method: 'POST' });
+      await fetch(`${API_URL}/api/music/play-count/${song.id}`, { method: 'POST' });
     } catch (err) {
       console.error('Failed to update play:', err);
     }
@@ -207,14 +209,17 @@ export default function MusicPlayerComponent({ fullScreen = false }) {
     if (!uploadFile) return;
     setUploading(true);
     try {
-      const formData = new FormData();
-      formData.append('audio', uploadFile);
-      formData.append('title', uploadTitle || uploadFile.name);
-      formData.append('artist', uploadArtist || 'Unknown Artist');
-      formData.append('album', uploadAlbum || 'Unknown Album');
-      formData.append('genre', uploadGenre);
-      await axios.post(`${API_URL}/api/music/upload`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+      const songRef = ref(storage, `songs/${Date.now()}_${uploadFile.name}`);
+      await uploadBytes(songRef, uploadFile);
+      const fileUrl = await getDownloadURL(songRef);
+      await addDoc(collection(db, 'songs'), {
+        title: uploadTitle || uploadFile.name,
+        artist: uploadArtist || 'Unknown Artist',
+        album: uploadAlbum || 'Unknown Album',
+        genre: uploadGenre,
+        file_url: fileUrl,
+        created_at: serverTimestamp(),
+        user_id: currentUser.id
       });
       setShowUpload(false);
       setUploadFile(null);
@@ -233,7 +238,11 @@ export default function MusicPlayerComponent({ fullScreen = false }) {
   const createPlaylist = async () => {
     if (!newPlaylistName) return;
     try {
-      await axios.post(`${API_URL}/api/music/playlists`, { name: newPlaylistName });
+      await fetch(`${API_URL}/api/music/playlists`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newPlaylistName })
+      });
       setNewPlaylistName('');
       setShowPlaylistModal(false);
       fetchPlaylists();
@@ -244,7 +253,11 @@ export default function MusicPlayerComponent({ fullScreen = false }) {
 
   const addToPlaylist = async (playlistId, songId) => {
     try {
-      await axios.post(`${API_URL}/api/music/playlists/${playlistId}/songs`, { songId });
+      await fetch(`${API_URL}/api/music/playlists/${playlistId}/songs`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ songId })
+      });
       fetchPlaylists();
     } catch (err) {
       console.error('Failed to add to playlist:', err);
@@ -253,7 +266,7 @@ export default function MusicPlayerComponent({ fullScreen = false }) {
 
   const deleteSong = async (songId) => {
     try {
-      await axios.delete(`${API_URL}/api/music/song/${songId}`);
+      await fetch(`${API_URL}/api/music/song/${songId}`, { method: 'DELETE' });
       setSongs(prev => prev.filter(s => s.id !== songId));
       if (currentSong?.id === songId) {
         setCurrentSong(null);
@@ -266,8 +279,8 @@ export default function MusicPlayerComponent({ fullScreen = false }) {
 
   const toggleLike = async (songId) => {
     try {
-      const res = await axios.post(`${API_URL}/api/music/song/${songId}/like`);
-      if (res.data.liked) {
+      const res = await fetch(`${API_URL}/api/music/song/${songId}/like`, { method: 'POST' }).then(r => r.json());
+      if (res.liked) {
         setLikedSongs(prev => new Set([...prev, songId]));
       } else {
         setLikedSongs(prev => { const n = new Set(prev); n.delete(songId); return n; });
@@ -279,7 +292,7 @@ export default function MusicPlayerComponent({ fullScreen = false }) {
 
   const deletePlaylist = async (playlistId) => {
     try {
-      await axios.delete(`${API_URL}/api/music/playlists/${playlistId}`);
+      await fetch(`${API_URL}/api/music/playlists/${playlistId}`, { method: 'DELETE' });
       setActivePlaylist(null);
       setPlaylistSongs([]);
       fetchPlaylists();
@@ -290,7 +303,7 @@ export default function MusicPlayerComponent({ fullScreen = false }) {
 
   const removeFromPlaylist = async (playlistId, songId) => {
     try {
-      await axios.delete(`${API_URL}/api/music/playlists/${playlistId}/songs/${songId}`);
+      await fetch(`${API_URL}/api/music/playlists/${playlistId}/songs/${songId}`, { method: 'DELETE' });
       setPlaylistSongs(prev => prev.filter(s => s.id !== songId));
     } catch (err) {
       console.error('Failed to remove from playlist:', err);

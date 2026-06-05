@@ -12,6 +12,36 @@
         "destination": "/login.html",
         "type": 302
       }
+    ],
+    "rewrites": [
+      {
+        "source": "/register",
+        "destination": "/index.html"
+      },
+      {
+        "source": "/chat",
+        "destination": "/index.html"
+      },
+      {
+        "source": "/video",
+        "destination": "/index.html"
+      },
+      {
+        "source": "/stream",
+        "destination": "/index.html"
+      },
+      {
+        "source": "/music",
+        "destination": "/index.html"
+      },
+      {
+        "source": "/maps",
+        "destination": "/index.html"
+      },
+      {
+        "source": "/ai",
+        "destination": "/index.html"
+      }
     ]
   }
 }

@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
-import { getSocket } from '../App';
+import { collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, deleteDoc, doc, getDocs, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { auth, db } from '../App';
 import { FiPlay, FiSquare, FiEye, FiDollarSign, FiMessageCircle, FiUsers, FiCalendar, FiClock, FiTag, FiEdit2, FiTrash2 } from 'react-icons/fi';
-import { format } from 'date-fns';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000';
 
@@ -43,39 +42,15 @@ export default function LiveStreamComponent({ fullScreen = false }) {
     fetchFeaturedStreams();
     fetchMyStreams();
     fetchCategories();
-    const socket = getSocket();
-    if (socket) {
-      socket.on('stream:chat', handleStreamChat);
-      socket.on('stream:tip', handleStreamTip);
-      socket.on('stream:viewer-joined', handleViewerJoined);
-      socket.on('stream:started', ({ streamId: sid }) => {
-        fetchLiveStreams();
-      });
-      socket.on('stream:ended', ({ streamId: sid }) => {
-        if (activeStream?.id === sid) {
-          setActiveStream(null);
-          setIsLive(false);
-        }
-        fetchLiveStreams();
-      });
-    }
     return () => {
-      const s = getSocket();
-      if (s) {
-        s.off('stream:chat', handleStreamChat);
-        s.off('stream:tip', handleStreamTip);
-        s.off('stream:viewer-joined', handleViewerJoined);
-        s.off('stream:started');
-        s.off('stream:ended');
-      }
       if (streamIntervalRef.current) clearInterval(streamIntervalRef.current);
     };
   }, []);
 
   const fetchLiveStreams = async () => {
     try {
-      const res = await axios.get(`${API_URL}/api/stream/live`);
-      setLiveStreams(res.data);
+      const res = await fetch(`${API_URL}/api/stream/live`).then(r => r.json());
+      setLiveStreams(res);
     } catch (err) {
       console.error('Failed to fetch live streams:', err);
     } finally {
@@ -85,8 +60,8 @@ export default function LiveStreamComponent({ fullScreen = false }) {
 
   const fetchFeaturedStreams = async () => {
     try {
-      const res = await axios.get(`${API_URL}/api/stream/featured`);
-      setFeaturedStreams(res.data);
+      const res = await fetch(`${API_URL}/api/stream/featured`).then(r => r.json());
+      setFeaturedStreams(res);
     } catch (err) {
       console.error('Failed to fetch featured streams:', err);
     }
@@ -94,8 +69,8 @@ export default function LiveStreamComponent({ fullScreen = false }) {
 
   const fetchMyStreams = async () => {
     try {
-      const res = await axios.get(`${API_URL}/api/stream/my-streams`);
-      setMyStreams(res.data);
+      const res = await fetch(`${API_URL}/api/stream/my-streams`).then(r => r.json());
+      setMyStreams(res);
     } catch (err) {
       console.error('Failed to fetch my streams:', err);
     }
@@ -103,8 +78,8 @@ export default function LiveStreamComponent({ fullScreen = false }) {
 
   const fetchCategories = async () => {
     try {
-      const res = await axios.get(`${API_URL}/api/stream/categories`);
-      setCategories(res.data);
+      const res = await fetch(`${API_URL}/api/stream/categories`).then(r => r.json());
+      setCategories(res);
     } catch (err) {
       console.error('Failed to fetch categories:', err);
     }
@@ -112,17 +87,13 @@ export default function LiveStreamComponent({ fullScreen = false }) {
 
   const fetchStreamDetails = async (streamId) => {
     try {
-      const res = await axios.get(`${API_URL}/api/stream/${streamId}`);
-      setActiveStream(res.data);
-      setViewerCount(res.data.viewer_count);
-      const chatRes = await axios.get(`${API_URL}/api/stream/${streamId}/chat`);
-      setStreamChat(chatRes.data);
-      const tipsRes = await axios.get(`${API_URL}/api/stream/${streamId}/tips`);
-      setTips(tipsRes.data.tips || []);
-      const socket = getSocket();
-      if (socket) {
-        socket.emit('stream:join', { streamId, username: currentUser.username });
-      }
+      const res = await fetch(`${API_URL}/api/stream/${streamId}`).then(r => r.json());
+      setActiveStream(res);
+      setViewerCount(res.viewer_count);
+      const chatRes = await fetch(`${API_URL}/api/stream/${streamId}/chat`).then(r => r.json());
+      setStreamChat(chatRes);
+      const tipsRes = await fetch(`${API_URL}/api/stream/${streamId}/tips`).then(r => r.json());
+      setTips(tipsRes.tips || []);
       if (streamIntervalRef.current) clearInterval(streamIntervalRef.current);
       streamIntervalRef.current = setInterval(() => {
         setViewerCount(prev => prev + Math.floor(Math.random() * 3));
@@ -151,16 +122,21 @@ export default function LiveStreamComponent({ fullScreen = false }) {
       if (scheduleDate && scheduleTime) {
         formData.scheduledFor = new Date(`${scheduleDate}T${scheduleTime}`).toISOString();
       }
-      const res = await axios.post(`${API_URL}/api/stream/create`, formData);
-      setStreamKey(res.data.streamKey);
-      setStreamId(res.data.streamId);
+      const res = await fetch(`${API_URL}/api/stream/create`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      }).then(r => r.json());
+      setStreamKey(res.streamKey);
+      setStreamId(res.streamId);
       setStreamMode('setup');
       setShowCreateForm(false);
       if (thumbnail) {
-        const thumbData = new FormData();
-        thumbData.append('thumbnail', thumbnail);
-        await axios.post(`${API_URL}/api/stream/${res.data.streamId}/thumbnail`, thumbData, {
-          headers: { 'Content-Type': 'multipart/form-data' }
+        const thumbForm = new FormData();
+        thumbForm.append('thumbnail', thumbnail);
+        await fetch(`${API_URL}/api/stream/${res.streamId}/thumbnail`, {
+          method: 'POST',
+          body: thumbForm
         });
       }
       fetchMyStreams();
@@ -173,7 +149,7 @@ export default function LiveStreamComponent({ fullScreen = false }) {
   const goLive = async () => {
     if (!streamId) return;
     try {
-      await axios.post(`${API_URL}/api/stream/go-live/${streamId}`);
+      await fetch(`${API_URL}/api/stream/go-live/${streamId}`, { method: 'POST' });
       setIsLive(true);
       setStreamMode('streaming');
       fetchLiveStreams();
@@ -186,7 +162,7 @@ export default function LiveStreamComponent({ fullScreen = false }) {
   const endStream = async () => {
     if (!streamId) return;
     try {
-      await axios.post(`${API_URL}/api/stream/end/${streamId}`);
+      await fetch(`${API_URL}/api/stream/end/${streamId}`, { method: 'POST' });
       setIsLive(false);
       setStreamMode('browse');
       setStreamId(null);
@@ -201,37 +177,16 @@ export default function LiveStreamComponent({ fullScreen = false }) {
 
   const sendChatMessage = () => {
     if (!chatMessage.trim() || !activeStream) return;
-    const socket = getSocket();
-    if (socket) {
-      socket.emit('stream:chat', {
-        streamId: activeStream.id,
-        message: chatMessage,
-        username: currentUser.username
-      });
-      setChatMessage('');
-    }
+    setChatMessage('');
   };
 
   const sendTip = async () => {
     if (!activeStream) return;
-    const socket = getSocket();
-    if (socket) {
-      socket.emit('stream:tip', {
-        streamId: activeStream.id,
-        amount: tipAmount,
-        message: tipMessage,
-        username: currentUser.username
-      });
-    }
     setShowTipModal(false);
     setTipMessage('');
   };
 
   const leaveStream = () => {
-    const socket = getSocket();
-    if (socket && activeStream) {
-      socket.emit('stream:leave', { streamId: activeStream.id });
-    }
     setActiveStream(null);
     setStreamChat([]);
     if (streamIntervalRef.current) clearInterval(streamIntervalRef.current);
@@ -442,7 +397,7 @@ export default function LiveStreamComponent({ fullScreen = false }) {
                     <FiEye /> {viewerCount}
                   </div>
                   <div style={styles.streamStat}>
-                    <FiClock /> {activeStream.started_at ? format(new Date(activeStream.started_at), 'HH:mm') : ''}
+                    <FiClock /> {activeStream.started_at ? new Date(activeStream.started_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                   </div>
                   <div style={styles.streamStat}>
                     <FiTag /> {activeStream.category}

@@ -84,25 +84,34 @@
         </div>
     </div>
 
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="js/config.js"></script>
+    <script src="js/firebase-init.js"></script>
     <script>
-        const API_URL = (window.APP_CONFIG && window.APP_CONFIG.API_URL) || window.location.origin;
-
-        if (!localStorage.getItem('token')) {
-            window.location.href = '/login.html';
-        }
-
-        const user = JSON.parse(localStorage.getItem('user') || '{}');
-        document.getElementById('userDisplay').textContent = user.username || 'User';
-        document.getElementById('welcomeSub').textContent = 'Welcome, ' + (user.username || 'User') + '!';
+        auth.onAuthStateChanged(user => {
+            if (!user) {
+                window.location.href = '/login.html';
+                return;
+            }
+            db.collection('users').doc(user.uid).get().then(doc => {
+                if (doc.exists) {
+                    const data = doc.data();
+                    document.getElementById('userDisplay').textContent = data.username || data.displayName || 'User';
+                    document.getElementById('welcomeSub').textContent = 'Welcome, ' + (data.username || data.displayName || 'User') + '!';
+                } else {
+                    document.getElementById('userDisplay').textContent = user.displayName || 'User';
+                    document.getElementById('welcomeSub').textContent = 'Welcome, ' + (user.displayName || 'User') + '!';
+                }
+            }).catch(() => {
+                document.getElementById('userDisplay').textContent = user.displayName || 'User';
+                document.getElementById('welcomeSub').textContent = 'Welcome, ' + (user.displayName || 'User') + '!';
+            });
+        });
 
         function handleLogout() {
-            fetch(API_URL + '/api/auth/logout', {
-                method: 'POST',
-                headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
-            }).catch(() => {});
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
+            auth.signOut();
             window.location.href = '/login.html';
         }
     </script>

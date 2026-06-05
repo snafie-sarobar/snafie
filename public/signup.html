@@ -184,16 +184,11 @@
     </div>
 
     <script>
-        const API_URL = (window.APP_CONFIG && window.APP_CONFIG.API_URL) || window.location.origin;
-        let users = JSON.parse(localStorage.getItem('snapfic_users')) || [];
         let tempUserData = {};
-        let generatedOTP = '';
-        let otpVerified = false;
         let selectedInterests = [];
         let isPublic = true;
         let uploadedImageData = null;
         let currentStep = 1;
-        let timerInterval;
 
         const interestsList = ['Music', 'Travel', 'AI', 'Video', 'Movies', 'Gaming', 'Reading', 'Sports', 'Cooking', 'Photography'];
 
@@ -230,26 +225,20 @@
         function goToPage2() {
             const fullName = document.getElementById('fullName').value;
             const email = document.getElementById('regEmail').value;
-            const mobile = document.getElementById('mobile').value;
             const password = document.getElementById('regPassword').value;
             const confirm = document.getElementById('confirmPassword').value;
 
-            if (!fullName || !email || !mobile || !password) { showError('Please fill all fields'); return; }
+            if (!fullName || !email || !password) { showError('Please fill all fields'); return; }
             if (password !== confirm) { showError('Passwords do not match'); return; }
             if (password.length < 6) { showError('Password must be at least 6 characters'); return; }
 
-            tempUserData = { fullName, email, mobile, password };
-            document.getElementById('verificationEmail').value = email;
-
-            generatedOTP = Math.floor(100000 + Math.random() * 900000).toString();
-            showInfo('Verification code sent to ' + email + ': ' + generatedOTP);
+            tempUserData = { fullName, email, password };
+            document.getElementById('displayEmail').textContent = email;
 
             document.getElementById('page' + currentStep).classList.remove('active-page');
             currentStep = 2;
             document.getElementById('page' + currentStep).classList.add('active-page');
             updateSteps();
-            resetOTPInputs();
-            startTimer();
         }
 
         function goToPage1() {
@@ -259,20 +248,7 @@
             updateSteps();
         }
 
-        function resetOTPInputs() { for (let i = 1; i <= 6; i++) document.getElementById('otp' + i).value = ''; document.getElementById('otp1').focus(); }
-        function moveToNext(curr, e) { if (e.key >= '0' && e.key <= '9' && curr < 6) document.getElementById('otp' + (curr + 1)).focus(); else if (e.key === 'Backspace' && curr > 1) document.getElementById('otp' + (curr - 1)).focus(); }
-        function verifyOTPOnComplete() { let o = ''; for (let i = 1; i <= 6; i++) o += document.getElementById('otp' + i).value; if (o.length === 6) verifyOTP(); }
-
-        function verifyOTP() {
-            let entered = '';
-            for (let i = 1; i <= 6; i++) entered += document.getElementById('otp' + i).value;
-            if (entered.length !== 6) { showError('Enter 6-digit code'); return; }
-            if (entered === generatedOTP) { otpVerified = true; showSuccess('Email verified!'); goToPage3(); }
-            else showError('Invalid code');
-        }
-
-        function goToPage3() {
-            if (!otpVerified) { showError('Verify email first'); return; }
+        function continueToPage3() {
             document.getElementById('page' + currentStep).classList.remove('active-page');
             currentStep = 3;
             document.getElementById('page' + currentStep).classList.add('active-page');
@@ -280,24 +256,12 @@
             initInterests();
         }
 
-        function startTimer() {
-            let timeLeft = 60;
-            const timerEl = document.getElementById('countdown');
-            const resendBtn = document.getElementById('resendBtn');
-            if (timerInterval) clearInterval(timerInterval);
-            timerInterval = setInterval(() => {
-                timeLeft--;
-                timerEl.textContent = timeLeft;
-                if (timeLeft <= 0) { clearInterval(timerInterval); resendBtn.disabled = false; timerEl.textContent = '0'; }
-            }, 1000);
-        }
-
-        function resendOTP() {
-            generatedOTP = Math.floor(100000 + Math.random() * 900000).toString();
-            showInfo('New code sent: ' + generatedOTP);
-            startTimer();
-            document.getElementById('resendBtn').disabled = true;
-            resetOTPInputs();
+        function goToPage3() {
+            document.getElementById('page' + currentStep).classList.remove('active-page');
+            currentStep = 3;
+            document.getElementById('page' + currentStep).classList.add('active-page');
+            updateSteps();
+            initInterests();
         }
 
         function openProfilePopup() { document.getElementById('profilePopup').style.display = 'flex'; }
@@ -352,6 +316,7 @@
 
         function completeSignup() {
             const username = document.getElementById('username').value;
+            const bio = document.getElementById('bio').value || '';
             if (!username) { showError('Username required'); return; }
 
             const email = tempUserData.email;
@@ -361,34 +326,46 @@
             document.getElementById('infoMsg').style.display = 'block';
             document.getElementById('infoMsg').textContent = 'Creating account...';
 
-            fetch(API_URL + '/api/auth/register', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password, username, confirmPassword: password })
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    localStorage.setItem('token', data.token);
-                    localStorage.setItem('user', JSON.stringify(data.user));
+            auth.createUserWithEmailAndPassword(email, password)
+                .then((cred) => {
+                    const user = cred.user;
+                    return user.updateProfile({ displayName: fullName }).then(() => {
+                        return db.collection('users').doc(user.uid).set({
+                            email,
+                            displayName: fullName,
+                            username,
+                            bio,
+                            interests: selectedInterests,
+                            isPublic,
+                            photoURL: user.photoURL || '',
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                            lastLogin: firebase.firestore.FieldValue.serverTimestamp(),
+                        });
+                    });
+                })
+                .then(() => {
                     showSuccess('Account created! Redirecting...');
                     setTimeout(() => { window.location.href = '/app.html'; }, 1500);
-                } else {
-                    const errMsg = data.errors ? data.errors.map(e => e.message).join(', ') : (data.error || 'Registration failed');
-                    showError(errMsg);
-                }
-            })
-            .catch(err => {
-                showError('Server error. Is the backend running on port 3000?');
-                console.error(err);
-            });
+                })
+                .catch((err) => {
+                    let msg = 'Registration failed.';
+                    if (err.code === 'auth/email-already-in-use') msg = 'Email already in use.';
+                    else if (err.code === 'auth/weak-password') msg = 'Password too weak. Use 6+ characters.';
+                    else if (err.code === 'auth/invalid-email') msg = 'Invalid email format.';
+                    else msg = err.message;
+                    showError(msg);
+                });
         }
 
         function goToLogin() { window.location.href = '/login.html'; }
 
         initInterests();
     </script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="js/config.js"></script>
+    <script src="js/firebase-init.js"></script>
     <script src="js/popup.js"></script>
 </body>
 </html>

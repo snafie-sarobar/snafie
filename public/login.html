@@ -481,23 +481,13 @@
         </div>
     </div>
 
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="js/config.js"></script>
+    <script src="js/firebase-init.js"></script>
     <script src="js/popup.js"></script>
     <script>
-        let users = JSON.parse(localStorage.getItem('snafic_users')) || [];
-        let loggedInUsers = JSON.parse(localStorage.getItem('snafic_logged_in_users')) || [];
-
-        if (users.length === 0) {
-            users.push({ 
-                id: 1, 
-                fullName: 'Demo User', 
-                email: 'demo@snafic.com', 
-                password: 'demo123', 
-                username: 'demouser' 
-            });
-            localStorage.setItem('snafic_users', JSON.stringify(users));
-        }
-
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('signedup') === 'true') {
             const successDiv = document.getElementById('loginSuccess');
@@ -507,6 +497,14 @@
                 successDiv.style.display = 'none';
             }, 4000);
         }
+
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                setTimeout(() => {
+                    window.location.href = 'app.html';
+                }, 500);
+            }
+        });
 
         function handleLogin() {
             const email = document.getElementById('loginEmail').value;
@@ -523,96 +521,99 @@
                 return;
             }
 
-            const user = users.find(u => u.email === email && u.password === password);
-            
-            if (user) {
-                localStorage.setItem('current_user', JSON.stringify(user));
-                
-                const hasLoggedInBefore = loggedInUsers.includes(user.email);
-                
-                if (hasLoggedInBefore) {
-                    welcomeTitle.innerHTML = `Welcome back, ${user.fullName || user.username}!`;
-                    welcomeSubtitle.innerHTML = 'Good to see you again';
-                    welcomeTitle.style.animation = 'fadeIn 0.5s ease';
-                    welcomeSubtitle.style.animation = 'fadeIn 0.5s ease';
-                    
-                    successDiv.textContent = `🎉 Welcome back, ${user.fullName || user.username}! Redirecting...`;
+            const btn = document.querySelector('.login-btn');
+            btn.disabled = true;
+            btn.textContent = 'Logging in...';
+
+            auth.signInWithEmailAndPassword(email, password)
+                .then((cred) => {
+                    successDiv.textContent = '🎉 Welcome back! Redirecting...';
                     successDiv.style.display = 'block';
-                    
+                    SnaficPopup.show({
+                        type: 'success',
+                        title: '✨ Welcome back! ✨',
+                        message: 'You now have access to:',
+                        features: ['🎵 Music', '🗺️ Maps', '🤖 AI', '📹 Video Calls'],
+                        confirmText: 'Continue',
+                        autoClose: 3000,
+                    });
+                    btn.disabled = false;
+                    btn.textContent = 'Log in';
                     setTimeout(() => {
-                        SnaficPopup.show({
-                            type: 'success',
-                            title: `✨ Welcome back, ${user.fullName || user.username}! ✨`,
-                            message: 'You now have access to:',
-                            features: ['🎵 Music', '🗺️ Maps', '🤖 AI', '📹 Video Calls'],
-                            confirmText: 'Continue',
-                            autoClose: 3500,
-                            onConfirm: function() {
-                                successDiv.style.display = 'none';
-                            }
-                        });
-                        successDiv.style.display = 'none';
-                        welcomeTitle.innerHTML = 'Welcome to Snafic';
-                        welcomeSubtitle.innerHTML = 'Sign in to continue';
-                    }, 1500);
-                } else {
-                    welcomeTitle.innerHTML = 'Welcome to Snafic';
-                    welcomeSubtitle.innerHTML = `Great to have you, ${user.fullName || user.username}!`;
-                    welcomeTitle.style.animation = 'fadeIn 0.5s ease';
-                    welcomeSubtitle.style.animation = 'fadeIn 0.5s ease';
-                    
-                    successDiv.textContent = `🎉 Welcome to Snafic, ${user.fullName || user.username}! Redirecting...`;
-                    successDiv.style.display = 'block';
-                    
-                    loggedInUsers.push(user.email);
-                    localStorage.setItem('snafic_logged_in_users', JSON.stringify(loggedInUsers));
-                    
-                    setTimeout(() => {
-                        SnaficPopup.show({
-                            type: 'success',
-                            title: `🎉 Welcome to Snafic, ${user.fullName || user.username}!`,
-                            message: 'You now have access to:',
-                            features: ['🎵 Music', '🗺️ Maps', '🤖 AI', '📹 Video Calls'],
-                            confirmText: 'Start Exploring',
-                            autoClose: 3500,
-                            onConfirm: function() {
-                                successDiv.style.display = 'none';
-                            }
-                        });
-                        successDiv.style.display = 'none';
-                        setTimeout(() => {
-                            welcomeTitle.innerHTML = 'Welcome to Snafic';
-                            welcomeSubtitle.innerHTML = 'Sign in to continue';
-                        }, 2000);
-                    }, 1500);
-                }
-                
-                setTimeout(() => {
-                    errorDiv.style.display = 'none';
-                }, 3000);
-            } else {
-                errorDiv.textContent = 'Invalid email or password. Try demo@snafic.com / demo123';
-                errorDiv.style.display = 'block';
-                setTimeout(() => errorDiv.style.display = 'none', 3000);
-            }
+                        window.location.href = 'app.html';
+                    }, 1000);
+                })
+                .catch((err) => {
+                    btn.disabled = false;
+                    btn.textContent = 'Log in';
+                    let msg = 'Login failed. Please try again.';
+                    if (err.code === 'auth/user-not-found') msg = 'No account found with this email.';
+                    else if (err.code === 'auth/wrong-password') msg = 'Incorrect password.';
+                    else if (err.code === 'auth/invalid-email') msg = 'Invalid email format.';
+                    else if (err.code === 'auth/too-many-requests') msg = 'Too many attempts. Try again later.';
+                    else if (err.code === 'auth/invalid-credential') msg = 'Invalid email or password.';
+                    errorDiv.textContent = msg;
+                    errorDiv.style.display = 'block';
+                    setTimeout(() => errorDiv.style.display = 'none', 3000);
+                });
         }
 
         function handleGoogleLogin() {
-            alert('Google Sign-In Demo\n\nDemo: demo@snafic.com / demo123');
-            document.getElementById('loginEmail').value = 'demo@snafic.com';
-            document.getElementById('loginPassword').value = 'demo123';
+            const provider = new firebase.auth.GoogleAuthProvider();
+            auth.signInWithPopup(provider)
+                .then((result) => {
+                    const user = result.user;
+                    db.collection('users').doc(user.uid).set({
+                        email: user.email,
+                        displayName: user.displayName,
+                        photoURL: user.photoURL,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        lastLogin: firebase.firestore.FieldValue.serverTimestamp(),
+                    }, { merge: true });
+                    SnaficPopup.show({
+                        type: 'success',
+                        title: '✨ Welcome to Snafic!',
+                        message: 'Signed in with Google',
+                        features: ['🎵 Music', '🗺️ Maps', '🤖 AI', '📹 Video Calls'],
+                        confirmText: 'Continue',
+                        autoClose: 3000,
+                    });
+                    setTimeout(() => {
+                        window.location.href = 'app.html';
+                    }, 1000);
+                })
+                .catch((err) => {
+                    const errorDiv = document.getElementById('loginError');
+                    errorDiv.textContent = 'Google sign-in failed: ' + err.message;
+                    errorDiv.style.display = 'block';
+                    setTimeout(() => errorDiv.style.display = 'none', 3000);
+                });
         }
 
         function forgotPassword() {
-            const email = prompt('Enter your email address:');
-            if (email) {
-                const user = users.find(u => u.email === email);
-                if (user) {
-                    alert(`Password reset link sent to ${email}\n\nDemo Mode: Your password is: ${user.password}`);
-                } else {
-                    alert('Email not found. Please create an account first.');
-                }
+            const email = document.getElementById('loginEmail').value;
+            if (!email) {
+                const errorDiv = document.getElementById('loginError');
+                errorDiv.textContent = 'Please enter your email first.';
+                errorDiv.style.display = 'block';
+                setTimeout(() => errorDiv.style.display = 'none', 3000);
+                return;
             }
+            auth.sendPasswordResetEmail(email)
+                .then(() => {
+                    const successDiv = document.getElementById('loginSuccess');
+                    successDiv.textContent = '✅ Password reset email sent! Check your inbox.';
+                    successDiv.style.display = 'block';
+                    setTimeout(() => successDiv.style.display = 'none', 5000);
+                })
+                .catch((err) => {
+                    const errorDiv = document.getElementById('loginError');
+                    let msg = 'Failed to send reset email.';
+                    if (err.code === 'auth/user-not-found') msg = 'No account found with this email.';
+                    errorDiv.textContent = msg;
+                    errorDiv.style.display = 'block';
+                    setTimeout(() => errorDiv.style.display = 'none', 3000);
+                });
         }
 
         function goToSignup() {

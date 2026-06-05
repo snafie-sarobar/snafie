@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
+import { collection, query, orderBy, onSnapshot, addDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { auth, db } from '../App';
 import { FiSend, FiMic, FiVolume2, FiImage, FiCode, FiGlobe, FiMessageSquare, FiPlus, FiTrash2, FiChevronLeft, FiChevronRight, FiUser, FiCopy, FiCheck, FiCpu, FiBook, FiSmile, FiHeart } from 'react-icons/fi';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000';
+const OPENAI_API_KEY = process.env.REACT_APP_OPENAI_API_KEY || '';
 
 const PERSONALITIES = [
   { id: 'default', name: 'Assistant', icon: '🤖', description: 'General purpose assistant' },
@@ -63,8 +65,8 @@ export default function AIComponent({ fullScreen = false }) {
 
   const fetchConversations = async () => {
     try {
-      const res = await axios.get(`${API_URL}/api/ai/conversations`);
-      setConversations(res.data);
+      const res = await fetch(`${API_URL}/api/ai/conversations`).then(r => r.json());
+      setConversations(res);
     } catch (err) {
       console.error('Failed to fetch conversations:', err);
     }
@@ -72,11 +74,11 @@ export default function AIComponent({ fullScreen = false }) {
 
   const fetchMessages = async (convId) => {
     try {
-      const res = await axios.get(`${API_URL}/api/ai/conversations/${convId}`);
-      setMessages(res.data.messages || []);
-      setActiveConversation(res.data);
-      setPersonality(res.data.personality || 'default');
-      setMode(res.data.mode || 'chat');
+      const res = await fetch(`${API_URL}/api/ai/conversations/${convId}`).then(r => r.json());
+      setMessages(res.messages || []);
+      setActiveConversation(res);
+      setPersonality(res.personality || 'default');
+      setMode(res.mode || 'chat');
     } catch (err) {
       console.error('Failed to fetch messages:', err);
     }
@@ -91,20 +93,23 @@ export default function AIComponent({ fullScreen = false }) {
     setLoading(true);
 
     try {
-      const res = await axios.post(`${API_URL}/api/ai/chat`, {
-        message: userMessage.content,
-        conversationId: activeConversation?.id,
-        personality,
-        mode
-      });
-      setMessages(prev => [...prev, { role: 'assistant', content: res.data.response }]);
+      const openaiMessages = [...messages, userMessage];
+      const openaiRes = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${OPENAI_API_KEY}` },
+        body: JSON.stringify({
+          model: 'gpt-3.5-turbo',
+          messages: openaiMessages
+        })
+      }).then(r => r.json());
+      const reply = openaiRes.choices?.[0]?.message?.content || 'No response';
+      setMessages(prev => [...prev, { role: 'assistant', content: reply }]);
       if (!activeConversation) {
-        setActiveConversation({ id: res.data.conversationId, title: userMessage.content.substring(0, 50), personality, mode });
+        setActiveConversation({ id: Date.now().toString(), title: userMessage.content.substring(0, 50), personality, mode });
         fetchConversations();
       }
-      setPersonalityName(res.data.personality || '');
     } catch (err) {
-      setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${err.response?.data?.error || 'Failed to get response'}` }]);
+      setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${err.message || 'Failed to get response'}` }]);
     } finally {
       setLoading(false);
     }
@@ -115,11 +120,15 @@ export default function AIComponent({ fullScreen = false }) {
     setLoading(true);
     setCodeResult('');
     try {
-      const res = await axios.post(`${API_URL}/api/ai/code`, {
-        prompt: codePrompt,
-        language: codeLanguage
-      });
-      setCodeResult(res.data.code);
+      const openaiRes = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${OPENAI_API_KEY}` },
+        body: JSON.stringify({
+          model: 'gpt-3.5-turbo',
+          messages: [{ role: 'user', content: `Write ${codeLanguage} code:\n${codePrompt}` }]
+        })
+      }).then(r => r.json());
+      setCodeResult(openaiRes.choices?.[0]?.message?.content || '');
     } catch (err) {
       setCodeResult('Error: Failed to generate code');
     } finally {
@@ -131,11 +140,15 @@ export default function AIComponent({ fullScreen = false }) {
     if (!translateText.trim()) return;
     setLoading(true);
     try {
-      const res = await axios.post(`${API_URL}/api/ai/translate`, {
-        text: translateText,
-        targetLanguage: translateTarget
-      });
-      setTranslatedResult(res.data.translatedText);
+      const openaiRes = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${OPENAI_API_KEY}` },
+        body: JSON.stringify({
+          model: 'gpt-3.5-turbo',
+          messages: [{ role: 'user', content: `Translate this to ${translateTarget}:\n${translateText}` }]
+        })
+      }).then(r => r.json());
+      setTranslatedResult(openaiRes.choices?.[0]?.message?.content || '');
     } catch (err) {
       setTranslatedResult('Translation failed');
     } finally {
@@ -147,8 +160,12 @@ export default function AIComponent({ fullScreen = false }) {
     if (!imagePrompt.trim() || generatingImage) return;
     setGeneratingImage(true);
     try {
-      const res = await axios.post(`${API_URL}/api/ai/image`, { prompt: imagePrompt });
-      setGeneratedImage(res.data.imageUrl);
+      const openaiRes = await fetch('https://api.openai.com/v1/images/generations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${OPENAI_API_KEY}` },
+        body: JSON.stringify({ prompt: imagePrompt, n: 1, size: '1024x1024' })
+      }).then(r => r.json());
+      setGeneratedImage(openaiRes.data?.[0]?.url || null);
     } catch (err) {
       alert('Image generation failed');
     } finally {
@@ -158,7 +175,7 @@ export default function AIComponent({ fullScreen = false }) {
 
   const deleteConversation = async (convId) => {
     try {
-      await axios.delete(`${API_URL}/api/ai/conversations/${convId}`);
+      await fetch(`${API_URL}/api/ai/conversations/${convId}`, { method: 'DELETE' });
       if (activeConversation?.id === convId) {
         setActiveConversation(null);
         setMessages([]);
