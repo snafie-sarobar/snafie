@@ -17,6 +17,7 @@
         background: rgba(0,0,0,0.6); backdrop-filter: blur(12px);
         z-index: 10000; display: none; align-items: center; justify-content: center;
         opacity: 0; transition: opacity 0.25s ease;
+        place-items: center;
       }
       .snafic-popup-overlay.active { display: flex; animation: snaficFadeOverlay 0.25s forwards; }
       @keyframes snaficFadeOverlay { from { opacity: 0; } to { opacity: 1; } }
@@ -25,7 +26,9 @@
         border-radius: 56px; border: 1px solid rgba(255,255,255,0.25);
         box-shadow: 0 40px 70px -20px rgba(0,0,0,0.6), inset 0 1px 1px rgba(255,255,255,0.1);
         width: 90%; max-width: 520px; text-align: center; padding: 2.2rem 2rem;
+        margin: auto;
         animation: snaficPopupEnter 0.4s cubic-bezier(0.2,0.9,0.4,1.2); transform-origin: center;
+        max-height: 90vh; overflow-y: auto;
       }
       @keyframes snaficPopupEnter {
         0% { opacity: 0; transform: scale(0.92) translateY(20px); }
