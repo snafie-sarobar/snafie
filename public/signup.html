@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snapfic - Sign Up</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            animation: fadeIn 0.5s ease;
+        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideIn { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+        
+        .signup-container { max-width: 550px; width: 100%; background: white; border-radius: 20px; box-shadow: 0 25px 50px rgba(0,0,0,0.2); overflow: hidden; animation: slideIn 0.4s ease; }
+        .header { text-align: center; padding: 30px 30px 20px; background: linear-gradient(135deg, #1e3c72, #2a5298); color: white; }
+        .header h2 { font-size: 28px; margin-bottom: 5px; }
+        .header p { opacity: 0.9; font-size: 14px; }
+        .step-indicator { display: flex; justify-content: center; gap: 40px; padding: 20px; background: #f8f9fa; border-bottom: 1px solid #eee; }
+        .step { text-align: center; position: relative; cursor: pointer; transition: all 0.3s; }
+        .step-number { width: 40px; height: 40px; background: #ddd; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px; font-weight: bold; transition: all 0.3s; }
+        .step.active .step-number { background: linear-gradient(135deg, #1e3c72, #2a5298); color: white; transform: scale(1.1); box-shadow: 0 0 15px rgba(30,60,114,0.4); }
+        .step.completed .step-number { background: #28a745; color: white; }
+        .step-label { font-size: 12px; color: #666; }
+        .step.active .step-label { color: #1e3c72; font-weight: bold; }
+        .form-container { padding: 30px; }
+        .signup-page { display: none; animation: fadeIn 0.4s ease; }
+        .signup-page.active-page { display: block; }
+        .input-group { margin-bottom: 18px; position: relative; }
+        .input-group input, .input-group select { width: 100%; padding: 14px 16px; border: 2px solid #e0e0e0; border-radius: 12px; font-size: 15px; transition: all 0.3s; background: white; }
+        .input-group input:focus, .input-group select:focus { outline: none; border-color: #1e3c72; box-shadow: 0 0 0 3px rgba(30,60,114,0.1); transform: translateY(-1px); }
+        .btn-group { display: flex; gap: 15px; margin-top: 25px; }
+        .next-btn, .prev-btn, .submit-btn { flex: 1; padding: 14px; border: none; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; transition: all 0.3s; }
+        .next-btn { background: linear-gradient(135deg, #1e3c72, #2a5298); color: white; }
+        .next-btn:hover, .submit-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+        .prev-btn { background: #e0e0e0; color: #333; }
+        .submit-btn { background: linear-gradient(135deg, #28a745, #20c997); color: white; }
+        .error-msg, .success-msg, .info-msg { padding: 12px; border-radius: 10px; margin-bottom: 20px; text-align: center; font-size: 13px; display: none; animation: shake 0.3s ease; }
+        .error-msg { background: #fee; color: #c33; border-left: 4px solid #c33; }
+        .success-msg { background: #e6f7e6; color: #28a745; border-left: 4px solid #28a745; }
+        .info-msg { background: #e3f2fd; color: #1976d2; border-left: 4px solid #1976d2; }
+        
+        .otp-container { display: flex; gap: 12px; justify-content: center; margin: 20px 0; }
+        .otp-input { width: 50px; height: 60px; text-align: center; font-size: 24px; font-weight: bold; border: 2px solid #e0e0e0; border-radius: 12px; transition: all 0.3s; }
+        .otp-input:focus { outline: none; border-color: #1e3c72; transform: scale(1.05); }
+        .resend-btn { background: none; border: none; color: #1e3c72; cursor: pointer; font-size: 13px; text-decoration: underline; margin-top: 10px; }
+        .timer { font-size: 14px; color: #666; margin-top: 10px; text-align: center; }
+        
+        .popup-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); z-index: 1000; align-items: center; justify-content: center; animation: fadeIn 0.3s; }
+        .movable-popup { position: absolute; width: 450px; max-width: 90%; background: white; border-radius: 24px; box-shadow: 0 25px 50px rgba(0,0,0,0.3); overflow: hidden; cursor: move; }
+        .popup-header { padding: 20px; background: linear-gradient(135deg, #1e3c72, #2a5298); color: white; display: flex; justify-content: space-between; align-items: center; cursor: move; }
+        .popup-header h3 { margin: 0; font-size: 18px; }
+        .close-popup { background: none; border: none; color: white; font-size: 28px; cursor: pointer; line-height: 1; }
+        .popup-body { padding: 25px; max-height: 500px; overflow-y: auto; }
+        .profile-preview { text-align: center; margin-bottom: 20px; }
+        .profile-avatar { width: 150px; height: 150px; border-radius: 50%; object-fit: cover; border: 4px solid #1e3c72; margin-bottom: 15px; cursor: pointer; }
+        .filter-buttons { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin: 15px 0; }
+        .filter-btn { padding: 8px 16px; border: none; border-radius: 20px; cursor: pointer; background: #f0f0f0; transition: all 0.3s; }
+        .filter-btn.active { background: #1e3c72; color: white; }
+        .privacy-toggle { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: #f8f9fa; border-radius: 12px; margin: 15px 0; }
+        .toggle-switch { position: relative; width: 60px; height: 30px; background: #ccc; border-radius: 30px; cursor: pointer; transition: all 0.3s; }
+        .toggle-switch.active { background: #28a745; }
+        .toggle-slider { position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; background: white; border-radius: 50%; transition: transform 0.3s; }
+        .toggle-switch.active .toggle-slider { transform: translateX(30px); }
+        .action-buttons { display: flex; gap: 10px; margin-top: 20px; }
+        .action-buttons button { flex: 1; padding: 12px; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; transition: all 0.3s; }
+        .save-btn { background: #28a745; color: white; }
+        .cancel-btn { background: #dc3545; color: white; }
+        .upload-btn { background: #1e3c72; color: white; display: block; width: 100%; padding: 12px; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; margin: 10px 0; }
+        
+        .interest-bubbles { display: flex; flex-wrap: wrap; gap: 12px; margin: 15px 0; }
+        .interest-bubble { padding: 10px 20px; background: #f0f2f5; border-radius: 30px; cursor: pointer; transition: all 0.3s; font-size: 14px; }
+        .interest-bubble.selected { background: linear-gradient(135deg, #1e3c72, #2a5298); color: white; transform: scale(1.05); }
+        
+        @media (max-width: 600px) { .step-indicator { gap: 20px; } .step-number { width: 35px; height: 35px; } .otp-input { width: 45px; height: 55px; } }
+    </style>
+</head>
+<body>
+    <div class="signup-container">
+        <div class="header">
+            <h2>Create Account</h2>
+            <p>Join Snapfic - Where connections come alive</p>
+        </div>
+        <div class="step-indicator">
+            <div class="step" id="step1"><div class="step-number">1</div><div class="step-label">Register</div></div>
+            <div class="step" id="step2"><div class="step-number">2</div><div class="step-label">Verify Email</div></div>
+            <div class="step" id="step3"><div class="step-number">3</div><div class="step-label">Profile</div></div>
+        </div>
+        <div class="form-container">
+            <div id="errorMsg" class="error-msg"></div>
+            <div id="successMsg" class="success-msg"></div>
+            <div id="infoMsg" class="info-msg"></div>
+
+            <div id="page1" class="signup-page active-page">
+                <div class="input-group"><input type="text" id="fullName" placeholder="Full name *"></div>
+                <div class="input-group"><input type="email" id="regEmail" placeholder="Email address *"></div>
+                <div class="input-group"><input type="tel" id="mobile" placeholder="Mobile number *"></div>
+                <div class="input-group"><input type="password" id="regPassword" placeholder="Password *"></div>
+                <div class="input-group"><input type="password" id="confirmPassword" placeholder="Confirm password *"></div>
+                <div class="btn-group"><button class="next-btn" onclick="goToPage2()">Next</button></div>
+            </div>
+
+            <div id="page2" class="signup-page">
+                <div class="input-group"><input type="text" id="verificationEmail" readonly style="background:#f5f5f5; text-align:center;"></div>
+                <div id="otpSection">
+                    <div class="otp-container" id="otpContainer">
+                        <input type="text" maxlength="1" class="otp-input" id="otp1" onkeyup="moveToNext(1, event)">
+                        <input type="text" maxlength="1" class="otp-input" id="otp2" onkeyup="moveToNext(2, event)">
+                        <input type="text" maxlength="1" class="otp-input" id="otp3" onkeyup="moveToNext(3, event)">
+                        <input type="text" maxlength="1" class="otp-input" id="otp4" onkeyup="moveToNext(4, event)">
+                        <input type="text" maxlength="1" class="otp-input" id="otp5" onkeyup="moveToNext(5, event)">
+                        <input type="text" maxlength="1" class="otp-input" id="otp6" onkeyup="verifyOTPOnComplete()">
+                    </div>
+                    <div class="timer" id="timer">Resend code in <span id="countdown">60</span> seconds</div>
+                    <button class="resend-btn" id="resendBtn" onclick="resendOTP()" disabled>Resend code</button>
+                </div>
+                <div class="btn-group">
+                    <button class="prev-btn" onclick="goToPage1()">Back</button>
+                    <button class="next-btn" onclick="verifyOTP()">Verify</button>
+                </div>
+            </div>
+
+            <div id="page3" class="signup-page">
+                <div class="input-group"><input type="text" id="username" placeholder="Username *"></div>
+                <div class="input-group"><input type="date" id="dob" placeholder="Date of birth"></div>
+                <div class="input-group"><select id="gender"><option value="">Select gender</option><option>Male</option><option>Female</option><option>Other</option></select></div>
+                <div class="input-group">
+                    <label style="display:block; margin-bottom:8px; font-weight:500;">Interests</label>
+                    <div class="interest-bubbles" id="interestBubbles"></div>
+                </div>
+                <div class="input-group"><input type="text" id="country" placeholder="Country"></div>
+                <button class="upload-btn" onclick="openProfilePopup()">Edit Profile Picture</button>
+                <div class="btn-group">
+                    <button class="prev-btn" onclick="goToPage2()">Back</button>
+                    <button class="submit-btn" onclick="completeSignup()">Create Account</button>
+                </div>
+            </div>
+        </div>
+        <div style="text-align:center; padding:20px; border-top:1px solid #eee;">
+            Already have an account? <a onclick="goToLogin()" style="color:#1e3c72; font-weight:bold; cursor:pointer;">Log in</a>
+        </div>
+    </div>
+
+    <div id="profilePopup" class="popup-overlay">
+        <div id="movablePopup" class="movable-popup">
+            <div class="popup-header" id="popupHeader">
+                <h3>Edit Profile Picture</h3>
+                <button class="close-popup" onclick="closeProfilePopup()">x</button>
+            </div>
+            <div class="popup-body">
+                <div class="profile-preview">
+                    <img id="profileAvatar" class="profile-avatar" src="https://ui-avatars.com/api/?background=1e3c72&color=fff&rounded=true&size=150" alt="Profile">
+                    <input type="file" id="imageUpload" accept="image/*" style="display:none;" onchange="handleImageUpload(event)">
+                    <button class="upload-btn" onclick="document.getElementById('imageUpload').click()">Upload Photo</button>
+                </div>
+                <div class="filter-buttons" id="filterButtons">
+                    <button class="filter-btn active" data-filter="none">Original</button>
+                    <button class="filter-btn" data-filter="grayscale(100%)">B&W</button>
+                    <button class="filter-btn" data-filter="sepia(100%)">Sepia</button>
+                    <button class="filter-btn" data-filter="brightness(1.2) contrast(1.1)">Bright</button>
+                    <button class="filter-btn" data-filter="saturate(2)">Vibrant</button>
+                </div>
+                <div class="privacy-toggle">
+                    <span>Profile Privacy</span>
+                    <div class="toggle-switch active" id="privacyToggle" onclick="togglePrivacy()">
+                        <div class="toggle-slider"></div>
+                    </div>
+                    <span id="privacyLabel">Public</span>
+                </div>
+                <div class="action-buttons">
+                    <button class="save-btn" onclick="saveProfileImage()">Save</button>
+                    <button class="cancel-btn" onclick="closeProfilePopup()">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = window.location.origin;
+        let users = JSON.parse(localStorage.getItem('snapfic_users')) || [];
+        let tempUserData = {};
+        let generatedOTP = '';
+        let otpVerified = false;
+        let selectedInterests = [];
+        let isPublic = true;
+        let uploadedImageData = null;
+        let currentStep = 1;
+        let timerInterval;
+
+        const interestsList = ['Music', 'Travel', 'AI', 'Video', 'Movies', 'Gaming', 'Reading', 'Sports', 'Cooking', 'Photography'];
+
+        function initInterests() {
+            const container = document.getElementById('interestBubbles');
+            container.innerHTML = '';
+            interestsList.forEach(interest => {
+                const bubble = document.createElement('div');
+                bubble.className = 'interest-bubble';
+                bubble.textContent = interest;
+                bubble.onclick = () => {
+                    bubble.classList.toggle('selected');
+                    const idx = selectedInterests.indexOf(interest);
+                    if (idx >= 0) selectedInterests.splice(idx, 1);
+                    else selectedInterests.push(interest);
+                };
+                container.appendChild(bubble);
+            });
+        }
+
+        function showError(msg) { const el = document.getElementById('errorMsg'); el.textContent = msg; el.style.display = 'block'; setTimeout(() => el.style.display = 'none', 4000); }
+        function showSuccess(msg) { const el = document.getElementById('successMsg'); el.textContent = msg; el.style.display = 'block'; setTimeout(() => el.style.display = 'none', 3000); }
+        function showInfo(msg) { const el = document.getElementById('infoMsg'); el.textContent = msg; el.style.display = 'block'; setTimeout(() => el.style.display = 'none', 3000); }
+
+        function updateSteps() {
+            for (let i = 1; i <= 3; i++) {
+                const step = document.getElementById('step' + i);
+                step.classList.remove('active', 'completed');
+                if (i < currentStep) step.classList.add('completed');
+                else if (i === currentStep) step.classList.add('active');
+            }
+        }
+
+        function goToPage2() {
+            const fullName = document.getElementById('fullName').value;
+            const email = document.getElementById('regEmail').value;
+            const mobile = document.getElementById('mobile').value;
+            const password = document.getElementById('regPassword').value;
+            const confirm = document.getElementById('confirmPassword').value;
+
+            if (!fullName || !email || !mobile || !password) { showError('Please fill all fields'); return; }
+            if (password !== confirm) { showError('Passwords do not match'); return; }
+            if (password.length < 6) { showError('Password must be at least 6 characters'); return; }
+
+            tempUserData = { fullName, email, mobile, password };
+            document.getElementById('verificationEmail').value = email;
+
+            generatedOTP = Math.floor(100000 + Math.random() * 900000).toString();
+            showInfo('Verification code sent to ' + email + ': ' + generatedOTP);
+
+            document.getElementById('page' + currentStep).classList.remove('active-page');
+            currentStep = 2;
+            document.getElementById('page' + currentStep).classList.add('active-page');
+            updateSteps();
+            resetOTPInputs();
+            startTimer();
+        }
+
+        function goToPage1() {
+            document.getElementById('page' + currentStep).classList.remove('active-page');
+            currentStep = 1;
+            document.getElementById('page' + currentStep).classList.add('active-page');
+            updateSteps();
+        }
+
+        function resetOTPInputs() { for (let i = 1; i <= 6; i++) document.getElementById('otp' + i).value = ''; document.getElementById('otp1').focus(); }
+        function moveToNext(curr, e) { if (e.key >= '0' && e.key <= '9' && curr < 6) document.getElementById('otp' + (curr + 1)).focus(); else if (e.key === 'Backspace' && curr > 1) document.getElementById('otp' + (curr - 1)).focus(); }
+        function verifyOTPOnComplete() { let o = ''; for (let i = 1; i <= 6; i++) o += document.getElementById('otp' + i).value; if (o.length === 6) verifyOTP(); }
+
+        function verifyOTP() {
+            let entered = '';
+            for (let i = 1; i <= 6; i++) entered += document.getElementById('otp' + i).value;
+            if (entered.length !== 6) { showError('Enter 6-digit code'); return; }
+            if (entered === generatedOTP) { otpVerified = true; showSuccess('Email verified!'); goToPage3(); }
+            else showError('Invalid code');
+        }
+
+        function goToPage3() {
+            if (!otpVerified) { showError('Verify email first'); return; }
+            document.getElementById('page' + currentStep).classList.remove('active-page');
+            currentStep = 3;
+            document.getElementById('page' + currentStep).classList.add('active-page');
+            updateSteps();
+            initInterests();
+        }
+
+        function startTimer() {
+            let timeLeft = 60;
+            const timerEl = document.getElementById('countdown');
+            const resendBtn = document.getElementById('resendBtn');
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                timerEl.textContent = timeLeft;
+                if (timeLeft <= 0) { clearInterval(timerInterval); resendBtn.disabled = false; timerEl.textContent = '0'; }
+            }, 1000);
+        }
+
+        function resendOTP() {
+            generatedOTP = Math.floor(100000 + Math.random() * 900000).toString();
+            showInfo('New code sent: ' + generatedOTP);
+            startTimer();
+            document.getElementById('resendBtn').disabled = true;
+            resetOTPInputs();
+        }
+
+        function openProfilePopup() { document.getElementById('profilePopup').style.display = 'flex'; }
+        function closeProfilePopup() { document.getElementById('profilePopup').style.display = 'none'; }
+
+        const popupHeader = document.getElementById('popupHeader');
+        const movablePopup = document.getElementById('movablePopup');
+        let isDragging = false, dragOffsetX, dragOffsetY;
+
+        popupHeader.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            const rect = movablePopup.getBoundingClientRect();
+            dragOffsetX = e.clientX - rect.left;
+            dragOffsetY = e.clientY - rect.top;
+            movablePopup.style.transform = 'none';
+            movablePopup.style.position = 'absolute';
+            movablePopup.style.top = rect.top + 'px';
+            movablePopup.style.left = rect.left + 'px';
+        });
+        document.addEventListener('mousemove', (e) => { if (isDragging) { movablePopup.style.left = (e.clientX - dragOffsetX) + 'px'; movablePopup.style.top = (e.clientY - dragOffsetY) + 'px'; } });
+        document.addEventListener('mouseup', () => { isDragging = false; });
+
+        function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    uploadedImageData = e.target.result;
+                    document.getElementById('profileAvatar').src = uploadedImageData;
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                document.getElementById('profileAvatar').style.filter = this.getAttribute('data-filter');
+            });
+        });
+
+        function togglePrivacy() {
+            const toggle = document.getElementById('privacyToggle');
+            const label = document.getElementById('privacyLabel');
+            isPublic = !isPublic;
+            if (isPublic) { toggle.classList.add('active'); label.textContent = 'Public'; }
+            else { toggle.classList.remove('active'); label.textContent = 'Private'; }
+        }
+
+        function saveProfileImage() { showSuccess('Profile picture updated!'); closeProfilePopup(); }
+
+        function completeSignup() {
+            const username = document.getElementById('username').value;
+            if (!username) { showError('Username required'); return; }
+
+            const email = tempUserData.email;
+            const password = tempUserData.password;
+            const fullName = tempUserData.fullName;
+
+            document.getElementById('infoMsg').style.display = 'block';
+            document.getElementById('infoMsg').textContent = 'Creating account...';
+
+            fetch(API_URL + '/api/auth/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password, username, confirmPassword: password })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    showSuccess('Account created! Redirecting...');
+                    setTimeout(() => { window.location.href = '/app.html'; }, 1500);
+                } else {
+                    const errMsg = data.errors ? data.errors.map(e => e.message).join(', ') : (data.error || 'Registration failed');
+                    showError(errMsg);
+                }
+            })
+            .catch(err => {
+                showError('Server error. Is the backend running on port 3000?');
+                console.error(err);
+            });
+        }
+
+        function goToLogin() { window.location.href = '/login.html'; }
+
+        initInterests();
+    </script>
+    <script src="js/popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snafic | Next Generation Platform</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            background: white;
+        }
+
+        /* Main Container - moved up with less padding */
+        .main-container {
+            position: relative;
+            z-index: 1;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px 40px 40px 40px;
+        }
+
+        /* Clean White Card with subtle border */
+        .clean-card {
+            max-width: 1400px;
+            width: 100%;
+            background: white;
+            border-radius: 32px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            border: 1px solid #eef2f6;
+        }
+
+        /* 2 Sections Layout */
+        .two-sections {
+            display: flex;
+            flex-wrap: wrap;
+        }
+
+        /* ========== LEFT SECTION - Clean White with Blue Accent ========== */
+        .left-section {
+            flex: 1.2;
+            padding: 50px 45px;
+            background: white;
+        }
+
+        /* App Logo Top Left - SNA blue, FIC white with blue background */
+        .app-logo {
+            display: inline-flex;
+            align-items: center;
+            gap: 0;
+            margin-bottom: 40px;
+            animation: slideDown 0.6s ease;
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            padding: 8px 20px 8px 16px;
+            border-radius: 60px;
+            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.2);
+        }
+
+        .logo-sna {
+            font-size: 32px;
+            font-weight: 800;
+            color: white;
+            letter-spacing: -0.5px;
+        }
+
+        .logo-fic {
+            font-size: 32px;
+            font-weight: 800;
+            color: white;
+            letter-spacing: -0.5px;
+        }
+
+        /* Slogan */
+        .slogan-section {
+            margin-bottom: 40px;
+            animation: slideUp 0.6s ease 0.1s both;
+        }
+
+        .slogan {
+            font-size: 44px;
+            font-weight: 800;
+            line-height: 1.2;
+            color: #1e293b;
+            letter-spacing: -1px;
+        }
+
+        .slogan span {
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .slogan-sub {
+            font-size: 16px;
+            margin-top: 16px;
+            line-height: 1.5;
+        }
+
+        .slogan-sub .blue-text {
+            color: #2563eb;
+            font-weight: 600;
+        }
+
+        .slogan-sub .gray-text {
+            color: #64748b;
+        }
+
+        /* 4 Squares Grid */
+        .features-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 10px;
+        }
+
+        .feature-square {
+            background: #f8fafc;
+            border-radius: 20px;
+            padding: 20px;
+            border: 1px solid #e2e8f0;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .feature-square:hover {
+            transform: translateY(-5px);
+            background: white;
+            border-color: #2563eb;
+            box-shadow: 0 10px 25px -5px rgba(37, 99, 235, 0.1);
+        }
+
+        .feature-emoji {
+            font-size: 40px;
+            margin-bottom: 12px;
+            display: inline-block;
+        }
+
+        .feature-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 8px;
+        }
+
+        .feature-desc {
+            font-size: 12px;
+            color: #64748b;
+            line-height: 1.4;
+        }
+
+        /* ========== RIGHT SECTION - Pure White ========== */
+        .right-section {
+            flex: 0.8;
+            padding: 50px 45px;
+            background: #fafcff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-left: 1px solid #eef2f6;
+        }
+
+        .login-wrapper {
+            width: 100%;
+            max-width: 380px;
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 35px;
+            transition: all 0.3s ease;
+        }
+
+        .login-header h2 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .login-header p {
+            color: #64748b;
+            font-size: 14px;
+        }
+
+        .input-field {
+            margin-bottom: 20px;
+        }
+
+        .input-field input {
+            width: 100%;
+            padding: 16px 18px;
+            background: #ffffff;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 14px;
+            font-size: 15px;
+            color: #1e293b;
+            transition: all 0.3s ease;
+        }
+
+        .input-field input::placeholder {
+            color: #94a3b8;
+        }
+
+        .input-field input:focus {
+            outline: none;
+            border-color: #2563eb;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 16px;
+            background: #2563eb;
+            border: none;
+            border-radius: 14px;
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .login-btn:hover {
+            background: #1d4ed8;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(37, 99, 235, 0.25);
+        }
+
+        .divider {
+            text-align: center;
+            margin: 25px 0;
+            position: relative;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            width: 42%;
+            height: 1px;
+            background: #e2e8f0;
+        }
+
+        .divider::before { left: 0; }
+        .divider::after { right: 0; }
+
+        .divider span {
+            background: #fafcff;
+            padding: 0 15px;
+            color: #94a3b8;
+            font-size: 13px;
+        }
+
+        /* Google Button */
+        .google-btn {
+            width: 100%;
+            padding: 14px;
+            background: white;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            color: #1e293b;
+            font-size: 15px;
+        }
+
+        .google-btn:hover {
+            border-color: #2563eb;
+            background: #f8fafc;
+            transform: translateY(-2px);
+        }
+
+        .google-icon {
+            width: 20px;
+            height: 20px;
+        }
+
+        .forgot-link {
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .forgot-link a {
+            color: #2563eb;
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .forgot-link a:hover {
+            text-decoration: underline;
+        }
+
+        .create-btn {
+            width: 100%;
+            padding: 14px;
+            background: transparent;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 14px;
+            color: #2563eb;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+        }
+
+        .create-btn:hover {
+            background: #2563eb;
+            color: white;
+            border-color: #2563eb;
+            transform: translateY(-2px);
+        }
+
+        .error-msg {
+            background: #fee2e2;
+            color: #dc2626;
+            padding: 12px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 13px;
+            display: none;
+        }
+
+        .success-msg {
+            background: #dcfce7;
+            color: #16a34a;
+            padding: 12px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 13px;
+            display: none;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @media (max-width: 1100px) {
+            .two-sections { flex-direction: column; }
+            .right-section { border-left: none; border-top: 1px solid #eef2f6; }
+            .features-grid { grid-template-columns: 1fr 1fr; }
+            .slogan { font-size: 36px; }
+        }
+
+        @media (max-width: 600px) {
+            .features-grid { grid-template-columns: 1fr; }
+            .left-section, .right-section { padding: 30px 20px; }
+            .clean-card { border-radius: 24px; }
+            .logo-sna, .logo-fic { font-size: 24px; }
+            .app-logo { padding: 6px 16px 6px 12px; }
+            .main-container { padding: 10px 20px 20px 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <div class="clean-card">
+            <div class="two-sections">
+                <!-- ========== LEFT SECTION ========== -->
+                <div class="left-section">
+                    <div class="app-logo">
+                        <span class="logo-sna">sna</span><span class="logo-fic">fic</span>
+                    </div>
+
+                    <div class="slogan-section">
+                        <div class="slogan">
+                            Connect, create,<br>
+                            and <span>explore</span> with AI.
+                        </div>
+                        <div class="slogan-sub">
+                            <span class="blue-text">One platform.</span> <span class="gray-text">Infinite possibilities.</span>
+                        </div>
+                    </div>
+
+                    <div class="features-grid">
+                        <div class="feature-square">
+                            <div class="feature-emoji">🎵</div>
+                            <div class="feature-title">Music</div>
+                            <div class="feature-desc">Stream millions of songs, create playlists, discover new artists.</div>
+                        </div>
+                        
+                        <div class="feature-square">
+                            <div class="feature-emoji">🗺️</div>
+                            <div class="feature-title">Maps</div>
+                            <div class="feature-desc">Real-time navigation, live location sharing, 3D maps.</div>
+                        </div>
+                        
+                        <div class="feature-square">
+                            <div class="feature-emoji">🤖</div>
+                            <div class="feature-title">AI Assistant</div>
+                            <div class="feature-desc">Smart AI chatbot, image generation, voice commands 24/7.</div>
+                        </div>
+                        
+                        <div class="feature-square">
+                            <div class="feature-emoji">📹</div>
+                            <div class="feature-title">Video Call</div>
+                            <div class="feature-desc">HD video calls, screen sharing, group calls up to 100 people.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ========== RIGHT SECTION ========== -->
+                <div class="right-section">
+                    <div class="login-wrapper">
+                        <div class="login-header" id="loginHeader">
+                            <h2 id="welcomeTitle">Welcome to Snafic</h2>
+                            <p id="welcomeSubtitle">Sign in to continue</p>
+                        </div>
+
+                        <div id="loginError" class="error-msg"></div>
+                        <div id="loginSuccess" class="success-msg"></div>
+
+                        <div class="input-field">
+                            <input type="email" id="loginEmail" placeholder="Email address">
+                        </div>
+                        <div class="input-field">
+                            <input type="password" id="loginPassword" placeholder="Password">
+                        </div>
+
+                        <button class="login-btn" onclick="handleLogin()">Log in</button>
+
+                        <div class="divider">
+                            <span>or</span>
+                        </div>
+
+                        <button class="google-btn" onclick="handleGoogleLogin()">
+                            <div class="google-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 48 48">
+                                    <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"/>
+                                    <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"/>
+                                    <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"/>
+                                    <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"/>
+                                </svg>
+                            </div>
+                            Continue with Google
+                        </button>
+
+                        <div class="forgot-link">
+                            <a href="#" onclick="forgotPassword()">Forgot password?</a>
+                        </div>
+
+                        <button class="create-btn" onclick="goToSignup()">
+                            Create new account
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/popup.js"></script>
+    <script>
+        let users = JSON.parse(localStorage.getItem('snafic_users')) || [];
+        let loggedInUsers = JSON.parse(localStorage.getItem('snafic_logged_in_users')) || [];
+
+        if (users.length === 0) {
+            users.push({ 
+                id: 1, 
+                fullName: 'Demo User', 
+                email: 'demo@snafic.com', 
+                password: 'demo123', 
+                username: 'demouser' 
+            });
+            localStorage.setItem('snafic_users', JSON.stringify(users));
+        }
+
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('signedup') === 'true') {
+            const successDiv = document.getElementById('loginSuccess');
+            successDiv.textContent = '✅ Account created successfully! Please login.';
+            successDiv.style.display = 'block';
+            setTimeout(() => {
+                successDiv.style.display = 'none';
+            }, 4000);
+        }
+
+        function handleLogin() {
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            const errorDiv = document.getElementById('loginError');
+            const successDiv = document.getElementById('loginSuccess');
+            const welcomeTitle = document.getElementById('welcomeTitle');
+            const welcomeSubtitle = document.getElementById('welcomeSubtitle');
+
+            if (!email || !password) {
+                errorDiv.textContent = 'Please fill all fields';
+                errorDiv.style.display = 'block';
+                setTimeout(() => errorDiv.style.display = 'none', 3000);
+                return;
+            }
+
+            const user = users.find(u => u.email === email && u.password === password);
+            
+            if (user) {
+                localStorage.setItem('current_user', JSON.stringify(user));
+                
+                const hasLoggedInBefore = loggedInUsers.includes(user.email);
+                
+                if (hasLoggedInBefore) {
+                    welcomeTitle.innerHTML = `Welcome back, ${user.fullName || user.username}!`;
+                    welcomeSubtitle.innerHTML = 'Good to see you again';
+                    welcomeTitle.style.animation = 'fadeIn 0.5s ease';
+                    welcomeSubtitle.style.animation = 'fadeIn 0.5s ease';
+                    
+                    successDiv.textContent = `🎉 Welcome back, ${user.fullName || user.username}! Redirecting...`;
+                    successDiv.style.display = 'block';
+                    
+                    setTimeout(() => {
+                        SnaficPopup.show({
+                            type: 'success',
+                            title: `✨ Welcome back, ${user.fullName || user.username}! ✨`,
+                            message: 'You now have access to:',
+                            features: ['🎵 Music', '🗺️ Maps', '🤖 AI', '📹 Video Calls'],
+                            confirmText: 'Continue',
+                            autoClose: 3500,
+                            onConfirm: function() {
+                                successDiv.style.display = 'none';
+                            }
+                        });
+                        successDiv.style.display = 'none';
+                        welcomeTitle.innerHTML = 'Welcome to Snafic';
+                        welcomeSubtitle.innerHTML = 'Sign in to continue';
+                    }, 1500);
+                } else {
+                    welcomeTitle.innerHTML = 'Welcome to Snafic';
+                    welcomeSubtitle.innerHTML = `Great to have you, ${user.fullName || user.username}!`;
+                    welcomeTitle.style.animation = 'fadeIn 0.5s ease';
+                    welcomeSubtitle.style.animation = 'fadeIn 0.5s ease';
+                    
+                    successDiv.textContent = `🎉 Welcome to Snafic, ${user.fullName || user.username}! Redirecting...`;
+                    successDiv.style.display = 'block';
+                    
+                    loggedInUsers.push(user.email);
+                    localStorage.setItem('snafic_logged_in_users', JSON.stringify(loggedInUsers));
+                    
+                    setTimeout(() => {
+                        SnaficPopup.show({
+                            type: 'success',
+                            title: `🎉 Welcome to Snafic, ${user.fullName || user.username}!`,
+                            message: 'You now have access to:',
+                            features: ['🎵 Music', '🗺️ Maps', '🤖 AI', '📹 Video Calls'],
+                            confirmText: 'Start Exploring',
+                            autoClose: 3500,
+                            onConfirm: function() {
+                                successDiv.style.display = 'none';
+                            }
+                        });
+                        successDiv.style.display = 'none';
+                        setTimeout(() => {
+                            welcomeTitle.innerHTML = 'Welcome to Snafic';
+                            welcomeSubtitle.innerHTML = 'Sign in to continue';
+                        }, 2000);
+                    }, 1500);
+                }
+                
+                setTimeout(() => {
+                    errorDiv.style.display = 'none';
+                }, 3000);
+            } else {
+                errorDiv.textContent = 'Invalid email or password. Try demo@snafic.com / demo123';
+                errorDiv.style.display = 'block';
+                setTimeout(() => errorDiv.style.display = 'none', 3000);
+            }
+        }
+
+        function handleGoogleLogin() {
+            alert('Google Sign-In Demo\n\nDemo: demo@snafic.com / demo123');
+            document.getElementById('loginEmail').value = 'demo@snafic.com';
+            document.getElementById('loginPassword').value = 'demo123';
+        }
+
+        function forgotPassword() {
+            const email = prompt('Enter your email address:');
+            if (email) {
+                const user = users.find(u => u.email === email);
+                if (user) {
+                    alert(`Password reset link sent to ${email}\n\nDemo Mode: Your password is: ${user.password}`);
+                } else {
+                    alert('Email not found. Please create an account first.');
+                }
+            }
+        }
+
+        function goToSignup() {
+            window.location.href = 'signup.html';
+        }
+    </script>
+</body>
+</html>

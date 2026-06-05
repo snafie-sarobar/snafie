@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Snafic • Universal Centered Popup System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: radial-gradient(ellipse at 20% 30%, #0f172a, #020617);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* Animated background orbs */
+        .bg-glow {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .glow-1 {
+            position: absolute;
+            top: -20%;
+            left: -10%;
+            width: 70%;
+            height: 70%;
+            background: radial-gradient(circle, rgba(59,130,246,0.35), transparent 70%);
+            filter: blur(70px);
+            animation: floatGlow 18s infinite alternate ease-in-out;
+        }
+
+        .glow-2 {
+            position: absolute;
+            bottom: -20%;
+            right: -10%;
+            width: 65%;
+            height: 65%;
+            background: radial-gradient(circle, rgba(139,92,246,0.35), transparent 70%);
+            filter: blur(80px);
+            animation: floatGlow 22s infinite alternate-reverse ease-in-out;
+        }
+
+        @keyframes floatGlow {
+            0% { transform: translate(0, 0) scale(1); opacity: 0.5; }
+            100% { transform: translate(5%, 5%) scale(1.2); opacity: 0.9; }
+        }
+
+        /* Demo buttons to trigger popups */
+        .demo-buttons {
+            position: relative;
+            z-index: 30;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+            margin-bottom: 40px;
+            padding: 20px;
+        }
+
+        .demo-btn {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 60px;
+            padding: 12px 28px;
+            font-weight: 600;
+            color: white;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.9rem;
+        }
+
+        .demo-btn:hover {
+            background: rgba(59,130,246,0.5);
+            transform: translateY(-3px);
+            border-color: #3b82f6;
+        }
+
+        /* ============================================= */
+        /* UNIVERSAL CENTERED POPUP (SAME FOR ALL)      */
+        /* ============================================= */
+        .popup-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(12px);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.25s ease;
+        }
+
+        .popup-overlay.active {
+            display: flex;
+            animation: fadeOverlay 0.25s forwards;
+        }
+
+        @keyframes fadeOverlay {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* MAIN POPUP CARD - EXACT SAME STYLE FOR EVERY POPUP */
+        .popup-card {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(24px);
+            border-radius: 56px;
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            box-shadow: 0 40px 70px -20px rgba(0, 0, 0, 0.6), inset 0 1px 1px rgba(255, 255, 255, 0.1);
+            width: 90%;
+            max-width: 520px;
+            text-align: center;
+            padding: 2.2rem 2rem;
+            animation: popupEnter 0.4s cubic-bezier(0.2, 0.9, 0.4, 1.2);
+            transform-origin: center;
+        }
+
+        @keyframes popupEnter {
+            0% {
+                opacity: 0;
+                transform: scale(0.92) translateY(20px);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        /* Animated checkmark (reused) */
+        .check-ring {
+            margin: 0 auto 1.3rem;
+            width: 95px;
+            height: 95px;
+            background: linear-gradient(145deg, #10b981, #047857);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: popScale 0.4s cubic-bezier(0.34, 1.4, 0.64, 1);
+            box-shadow: 0 15px 30px -8px rgba(16, 185, 129, 0.4);
+        }
+
+        .error-ring {
+            background: linear-gradient(145deg, #ef4444, #b91c1c);
+            box-shadow: 0 15px 30px -8px rgba(239, 68, 68, 0.4);
+        }
+
+        .warning-ring {
+            background: linear-gradient(145deg, #f59e0b, #d97706);
+            box-shadow: 0 15px 30px -8px rgba(245, 158, 11, 0.4);
+        }
+
+        .info-ring {
+            background: linear-gradient(145deg, #3b82f6, #1e3a8a);
+            box-shadow: 0 15px 30px -8px rgba(59,130,246,0.4);
+        }
+
+        @keyframes popScale {
+            0% { transform: scale(0); opacity: 0; }
+            70% { transform: scale(1.05); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .check-svg {
+            width: 48px;
+            height: 48px;
+            stroke: white;
+            stroke-width: 3;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            fill: none;
+        }
+
+        .check-svg polyline {
+            stroke-dasharray: 70;
+            stroke-dashoffset: 70;
+            animation: drawLine 0.4s ease 0.2s forwards;
+        }
+
+        @keyframes drawLine {
+            to { stroke-dashoffset: 0; }
+        }
+
+        /* popup title */
+        .popup-title {
+            font-size: 1.9rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #ffffff, #cbd5e1);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.3px;
+        }
+
+        .popup-message {
+            color: #e2e8f0;
+            font-size: 1rem;
+            line-height: 1.5;
+            margin: 1rem 0 1.2rem;
+            white-space: pre-line;
+        }
+
+        /* feature chips (for access messages) */
+        .popup-features {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 12px;
+            margin: 1.4rem 0;
+        }
+
+        .feature-chip {
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 60px;
+            padding: 6px 16px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: #e0f2fe;
+            transition: 0.2s;
+        }
+
+        /* action buttons */
+        .popup-actions {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 1.5rem;
+        }
+
+        .popup-btn {
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 60px;
+            padding: 10px 24px;
+            font-weight: 600;
+            color: white;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.9rem;
+        }
+
+        .popup-btn-primary {
+            background: linear-gradient(105deg, #3b82f6, #8b5cf6);
+            border: none;
+            box-shadow: 0 4px 12px rgba(59,130,246,0.3);
+        }
+
+        .popup-btn-primary:hover {
+            transform: translateY(-2px);
+            background: linear-gradient(105deg, #2563eb, #7c3aed);
+        }
+
+        .popup-btn-secondary:hover {
+            background: rgba(255,255,255,0.2);
+            transform: translateY(-2px);
+        }
+
+        /* progress timer (for auto-close) */
+        .popup-progress {
+            margin-top: 1.4rem;
+            height: 3px;
+            background: rgba(255,255,255,0.15);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .popup-progress-fill {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #60a5fa, #c084fc);
+            border-radius: 3px;
+        }
+
+        /* hide progress when not needed */
+        .popup-card.no-progress .popup-progress {
+            display: none;
+        }
+
+        @media (max-width: 550px) {
+            .popup-card {
+                padding: 1.5rem;
+                border-radius: 40px;
+                max-width: 90%;
+            }
+            .popup-title {
+                font-size: 1.5rem;
+            }
+            .check-ring {
+                width: 75px;
+                height: 75px;
+            }
+            .check-svg {
+                width: 38px;
+                height: 38px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="bg-glow">
+    <div class="glow-1"></div>
+    <div class="glow-2"></div>
+</div>
+
+<div class="demo-buttons">
+    <button class="demo-btn" id="showSuccessDemo">🎉 Show Success Popup</button>
+    <button class="demo-btn" id="showWelcomeBackDemo">👋 Welcome Back (Demo)</button>
+    <button class="demo-btn" id="showErrorDemo">⚠️ Error Demo</button>
+    <button class="demo-btn" id="showInfoDemo">ℹ️ Info Popup</button>
+    <button class="demo-btn" id="showFeatureAccess">✨ Feature Access</button>
+</div>
+
+<div id="universalPopup" class="popup-overlay">
+    <div class="popup-card" id="popupCard">
+        <div id="popupIcon" class="check-ring">
+            <svg class="check-svg" viewBox="0 0 52 52" xmlns="http://www.w3.org/2000/svg">
+                <polyline points="14,28 24,38 40,18" />
+            </svg>
+        </div>
+
+        <div id="popupTitle" class="popup-title">Welcome to Snafic</div>
+        <div id="popupMessage" class="popup-message">This is a universal centered popup</div>
+
+        <div id="popupFeaturesContainer" class="popup-features" style="display: none;"></div>
+
+        <div class="popup-actions">
+            <button id="popupConfirmBtn" class="popup-btn popup-btn-primary">Continue</button>
+            <button id="popupCancelBtn" class="popup-btn popup-btn-secondary" style="display: none;">Cancel</button>
+        </div>
+
+        <div id="popupProgress" class="popup-progress">
+            <div id="popupProgressFill" class="popup-progress-fill"></div>
+        </div>
+    </div>
+</div>
+
+<script src="js/popup.js"></script>
+<script>
+    document.getElementById('showSuccessDemo').onclick = () => {
+        SnaficPopup.show({
+            type: 'success',
+            title: '✅ Action Complete',
+            message: 'Your profile has been saved successfully!',
+            confirmText: 'Great',
+            autoClose: 2500
+        });
+    };
+
+    document.getElementById('showWelcomeBackDemo').onclick = () => {
+        SnaficPopup.show({
+            type: 'success',
+            title: '✨ Welcome back, Demo User! ✨',
+            message: 'You now have access to:',
+            features: ['🎵 Music', '🗺️ Maps', '🤖 AI Assistant', '📹 Video Calls'],
+            confirmText: 'Continue to Dashboard',
+            autoClose: 3200
+        });
+    };
+
+    document.getElementById('showErrorDemo').onclick = () => {
+        SnaficPopup.show({
+            type: 'error',
+            title: '⚠️ Connection Failed',
+            message: 'Unable to connect to server. Please check your internet and try again.',
+            confirmText: 'Retry',
+            showCancel: true,
+            cancelText: 'Cancel',
+            onConfirm: () => SnaficPopup.show({ type: 'info', title: 'Retrying...', message: 'Attempting to reconnect', autoClose: 1500 })
+        });
+    };
+
+    document.getElementById('showInfoDemo').onclick = () => {
+        SnaficPopup.show({
+            type: 'info',
+            title: 'ℹ️ New Feature',
+            message: 'Live streaming is now available for all users! Upgrade to enjoy high quality.',
+            confirmText: 'Explore',
+            autoClose: 4000
+        });
+    };
+
+    document.getElementById('showFeatureAccess').onclick = () => {
+        SnaficPopup.show({
+            type: 'success',
+            title: '🎉 Welcome to Snafic Premium',
+            message: 'Your subscription is active. Enjoy full access:',
+            features: ['🎬 Live Streaming', '🎵 Offline Music', '🗺️ 3D Maps', '🤖 Advanced AI', '📹 Group Video Calls'],
+            confirmText: 'Start Exploring',
+            autoClose: 4000
+        });
+    };
+
+    setTimeout(() => {
+        SnaficPopup.show({
+            type: 'success',
+            title: '✨ Welcome back, Demo User! ✨',
+            message: 'You now have access to:',
+            features: ['🎵 Music', '🗺️ Maps', '🤖 AI', '📹 Video Calls'],
+            confirmText: 'Enter Snafic',
+            autoClose: 3500
+        });
+    }, 500);
+</script>
+
+<div style="position: relative; z-index: 20; text-align: center; margin-top: 2rem; padding: 1rem; color: #94a3b8; font-size: 0.8rem;">
+    ✨ Universal Popup — same beautiful centered design for all app notifications ✨
+</div>
+</body>
+</html>

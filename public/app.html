@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snapfic - App</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; background: #0f0f23; color: #e0e0e0; min-height: 100vh; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .header { display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; background: #1a1a3e; border-radius: 12px; margin-bottom: 24px; border: 1px solid #2a2a5e; }
+        .app-title { font-size: 24px; font-weight: bold; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .user-info { display: flex; align-items: center; gap: 16px; }
+        .user-name { color: #aaa; font-size: 14px; }
+        .logout-btn { padding: 8px 20px; background: #dc2626; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; }
+        .features-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+        .feature-card { background: #1a1a3e; border-radius: 14px; padding: 24px; border: 1px solid #2a2a5e; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; text-decoration: none; color: inherit; display: block; }
+        .feature-card:hover { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(79,70,229,0.2); }
+        .feature-icon { font-size: 36px; margin-bottom: 12px; }
+        .feature-name { font-size: 18px; font-weight: 600; color: #fff; margin-bottom: 6px; }
+        .feature-desc { font-size: 13px; color: #888; line-height: 1.5; }
+        .welcome-section { text-align: center; padding: 40px 20px; margin-bottom: 24px; }
+        .welcome-title { font-size: 28px; font-weight: bold; margin-bottom: 8px; }
+        .welcome-sub { color: #888; font-size: 16px; }
+        .status-bar { display: flex; gap: 20px; justify-content: center; margin-top: 20px; flex-wrap: wrap; }
+        .status-item { padding: 8px 16px; background: #151532; border-radius: 8px; font-size: 13px; color: #888; border: 1px solid #2a2a5e; }
+        @media (max-width: 600px) { .features-grid { grid-template-columns: 1fr; } .header { flex-direction: column; gap: 12px; text-align: center; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="app-title">snapfic</div>
+            <div class="user-info">
+                <span class="user-name" id="userDisplay">User</span>
+                <button class="logout-btn" onclick="handleLogout()">Sign Out</button>
+            </div>
+        </div>
+
+        <div class="welcome-section">
+            <div class="welcome-title">Welcome to Snapfic</div>
+            <div class="welcome-sub" id="welcomeSub">Connect, create, and explore with AI.</div>
+            <div class="status-bar">
+                <div class="status-item">Chat</div>
+                <div class="status-item">Video Calls</div>
+                <div class="status-item">Live Stream</div>
+                <div class="status-item">Music</div>
+                <div class="status-item">Maps</div>
+                <div class="status-item">AI</div>
+            </div>
+        </div>
+
+        <div class="features-grid">
+            <a class="feature-card" href="#">
+                <div class="feature-icon">💬</div>
+                <div class="feature-name">Chat</div>
+                <div class="feature-desc">Real-time messaging with friends. Share files, images, and voice messages.</div>
+            </a>
+            <a class="feature-card" href="#">
+                <div class="feature-icon">📹</div>
+                <div class="feature-name">Video Calls</div>
+                <div class="feature-desc">HD video calling with screen sharing, recording, and virtual backgrounds.</div>
+            </a>
+            <a class="feature-card" href="#">
+                <div class="feature-icon">📡</div>
+                <div class="feature-name">Live Stream</div>
+                <div class="feature-desc">Go live with real-time chat, tips, and viewer analytics.</div>
+            </a>
+            <a class="feature-card" href="#">
+                <div class="feature-icon">🎵</div>
+                <div class="feature-name">Music Player</div>
+                <div class="feature-desc">Upload, organize, and play your music library with playlists.</div>
+            </a>
+            <a class="feature-card" href="#">
+                <div class="feature-icon">📍</div>
+                <div class="feature-name">Maps</div>
+                <div class="feature-desc">Real-time location sharing, saved places, geofences, and nearby users.</div>
+            </a>
+            <a class="feature-card" href="#">
+                <div class="feature-icon">🤖</div>
+                <div class="feature-name">AI Assistant</div>
+                <div class="feature-desc">Chat with AI, generate images, translate text, and get coding help.</div>
+            </a>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = window.location.origin;
+
+        if (!localStorage.getItem('token')) {
+            window.location.href = '/login.html';
+        }
+
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        document.getElementById('userDisplay').textContent = user.username || 'User';
+        document.getElementById('welcomeSub').textContent = 'Welcome, ' + (user.username || 'User') + '!';
+
+        function handleLogout() {
+            fetch(API_URL + '/api/auth/logout', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+            }).catch(() => {});
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = '/login.html';
+        }
+    </script>
+    <script src="js/popup.js"></script>
+</body>
+</html>
